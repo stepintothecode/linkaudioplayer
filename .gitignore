@@ -1,0 +1,37 @@
+# Build output
+bin/
+obj/
+publish/
+artifacts/
+*.user
+*.suo
+
+# Runtime data: database and cached audio. Never commit these.
+data/
+**/data/
+*.db
+*.db-shm
+*.db-wal
+
+# Test and coverage output
+TestResults/
+coverage/
+*.coverage
+*.trx
+
+# Editors
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local environment and secrets
+.env
+.env.local
+appsettings.Local.json
+appsettings.*.Local.json

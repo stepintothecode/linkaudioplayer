@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/data/
+**/publish/
+**/artifacts/
+**/TestResults/
+tests/
+docs/
+.git/
+.github/
+.vs/
+.vscode/
+.idea/
+*.md
+*.user
+*.db

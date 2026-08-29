@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MusicPlayer.Abstractions/MusicPlayer.Abstractions.csproj" />
+    <Project Path="src/MusicPlayer.Api/MusicPlayer.Api.csproj" />
+    <Project Path="src/MusicPlayer.Contracts/MusicPlayer.Contracts.csproj" />
+    <Project Path="src/MusicPlayer.Data/MusicPlayer.Data.csproj" />
+    <Project Path="src/MusicPlayer.Domain/MusicPlayer.Domain.csproj" />
+    <Project Path="src/MusicPlayer.Extraction/MusicPlayer.Extraction.csproj" />
+    <Project Path="src/MusicPlayer.Streaming/MusicPlayer.Streaming.csproj" />
+    <Project Path="src/MusicPlayer.Web/MusicPlayer.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MusicPlayer.Api.Tests/MusicPlayer.Api.Tests.csproj" />
+    <Project Path="tests/MusicPlayer.Data.Tests/MusicPlayer.Data.Tests.csproj" />
+    <Project Path="tests/MusicPlayer.Extraction.Tests/MusicPlayer.Extraction.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/support/">
+    <Project Path="tests/support/MusicPlayer.TestSupport.csproj" />
+  </Folder>
+</Solution>

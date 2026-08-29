@@ -1,0 +1,126 @@
+@page "/"
+@inject MusicPlayerApiClient Api
+@inject PlayerService Player
+
+<PageTitle>Library</PageTitle>
+<h1 class="visually-hidden">Library</h1>
+
+<div class="row">
+    <input type="url"
+           placeholder="Paste a link and press Add"
+           @bind="_url"
+           @bind:event="oninput"
+           @onkeydown="OnKeyDown" />
+    <button class="primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_url))" @onclick="AddAsync">
+        @(_busy ? "Adding" : "Add")
+    </button>
+</div>
+
+@if (_error is { } error)
+{
+    <div class="error">@error</div>
+}
+
+<h2>Tracks (@_tracks.Count)</h2>
+
+@if (_tracks.Count == 0)
+{
+    <p class="empty">Nothing here yet. Add a link above.</p>
+}
+else
+{
+    <ul class="list">
+        @foreach (var (track, index) in _tracks.Select((t, i) => (t, i)))
+        {
+            <li class="item @(Player.Current?.Id == track.Id ? "playing" : "")">
+                <img class="art" src="@(track.ThumbnailUrl ?? "icon.svg")" alt="" loading="lazy" />
+                <div class="meta">
+                    <span class="title">@track.Title</span>
+                    <span class="sub">
+                        @(track.Artist ?? track.Provider)
+                        @if (track.IsCached)
+                        {
+                            <span class="badge cached">offline</span>
+                        }
+                    </span>
+                </div>
+                <button class="icon" title="Play" @onclick="() => PlayFromAsync(index)">▶</button>
+                <button class="icon" title="Download for offline" disabled="@track.IsCached"
+                        @onclick="() => CacheAsync(track)">⬇</button>
+                <button class="icon" title="Remove" @onclick="() => DeleteAsync(track)">✕</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<TrackDto> _tracks = [];
+    private string _url = string.Empty;
+    private string? _error;
+    private bool _busy;
+
+    /// <summary>Loads the library on first render.</summary>
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    /// <summary>Submits the URL when the user presses Enter.</summary>
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await AddAsync();
+        }
+    }
+
+    /// <summary>Resolves the entered URL and adds the track.</summary>
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_url) || _busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        var (track, error) = await Api.AddTrackAsync(_url.Trim());
+
+        if (error is not null)
+        {
+            _error = error;
+        }
+        else if (track is not null)
+        {
+            _url = string.Empty;
+            await RefreshAsync();
+        }
+
+        _busy = false;
+    }
+
+    /// <summary>Queues the whole library starting at the chosen track.</summary>
+    private async Task PlayFromAsync(int index) => await Player.PlayQueueAsync(_tracks, index);
+
+    /// <summary>Downloads a track so it plays instantly and works offline.</summary>
+    private async Task CacheAsync(TrackDto track)
+    {
+        _error = null;
+        var (_, error) = await Api.CacheTrackAsync(track.Id);
+
+        if (error is not null)
+        {
+            _error = error;
+        }
+
+        await RefreshAsync();
+    }
+
+    /// <summary>Removes a track from the library.</summary>
+    private async Task DeleteAsync(TrackDto track)
+    {
+        await Api.DeleteTrackAsync(track.Id);
+        await RefreshAsync();
+    }
+
+    /// <summary>Reloads the track list from the server.</summary>
+    private async Task RefreshAsync() => _tracks = [.. await Api.GetTracksAsync()];
+}

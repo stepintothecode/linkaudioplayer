@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Fakes and helpers shared by test projects. Holds no tests itself. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MusicPlayer.Abstractions\MusicPlayer.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\MusicPlayer.Data\MusicPlayer.Data.csproj" />
+  </ItemGroup>
+
+</Project>
