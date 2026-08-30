@@ -30,6 +30,10 @@ coverage/
 Thumbs.db
 desktop.ini
 
+# Signing keys. Never commit these.
+*.keystore
+*.jks
+
 # Local environment and secrets
 .env
 .env.local

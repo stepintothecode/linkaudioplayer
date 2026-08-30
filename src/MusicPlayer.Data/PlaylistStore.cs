@@ -4,35 +4,49 @@ using MusicPlayer.Domain;
 
 namespace MusicPlayer.Data;
 
-/// <summary>EF Core implementation of <see cref="IPlaylistStore"/>.</summary>
+/// <summary>
+/// EF Core implementation of <see cref="IPlaylistStore"/>.
+/// Takes a context per operation, for the reasons noted on <see cref="TrackStore"/>.
+/// </summary>
 public sealed class PlaylistStore : IPlaylistStore
 {
-    private readonly LibraryDbContext _db;
+    private readonly IDbContextFactory<LibraryDbContext> _factory;
 
-    /// <summary>Creates the store over a library context.</summary>
-    public PlaylistStore(LibraryDbContext db) => _db = db;
+    /// <summary>Creates the store over a context factory.</summary>
+    public PlaylistStore(IDbContextFactory<LibraryDbContext> factory) => _factory = factory;
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<Playlist>> ListAsync(CancellationToken cancellationToken) =>
-        await _db.Playlists
+    public async Task<IReadOnlyList<Playlist>> ListAsync(CancellationToken cancellationToken)
+    {
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+
+        return await db.Playlists
             .AsNoTracking()
+            .Include(p => p.Items)
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
+    }
 
     /// <inheritdoc />
-    public async Task<Playlist?> GetAsync(Guid playlistId, CancellationToken cancellationToken) =>
-        await _db.Playlists
+    public async Task<Playlist?> GetAsync(Guid playlistId, CancellationToken cancellationToken)
+    {
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+
+        return await db.Playlists
             .AsNoTracking()
             .Include(p => p.Items.OrderBy(i => i.Position))
             .ThenInclude(i => i.Track)
             .FirstOrDefaultAsync(p => p.Id == playlistId, cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task<Playlist> CreateAsync(string name, string? description, CancellationToken cancellationToken)
     {
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+
         var playlist = new Playlist { Name = name, Description = description };
-        _db.Playlists.Add(playlist);
-        await _db.SaveChangesAsync(cancellationToken);
+        db.Playlists.Add(playlist);
+        await db.SaveChangesAsync(cancellationToken);
         return playlist;
     }
 
@@ -43,7 +57,9 @@ public sealed class PlaylistStore : IPlaylistStore
         string? description,
         CancellationToken cancellationToken)
     {
-        var playlist = await _db.Playlists.FindAsync([playlistId], cancellationToken);
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+
+        var playlist = await db.Playlists.FindAsync([playlistId], cancellationToken);
         if (playlist is null)
         {
             return false;
@@ -52,32 +68,36 @@ public sealed class PlaylistStore : IPlaylistStore
         playlist.Name = name;
         playlist.Description = description;
         playlist.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return true;
     }
 
     /// <inheritdoc />
     public async Task<bool> DeleteAsync(Guid playlistId, CancellationToken cancellationToken)
     {
-        var playlist = await _db.Playlists.FindAsync([playlistId], cancellationToken);
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+
+        var playlist = await db.Playlists.FindAsync([playlistId], cancellationToken);
         if (playlist is null)
         {
             return false;
         }
 
-        _db.Playlists.Remove(playlist);
-        await _db.SaveChangesAsync(cancellationToken);
+        db.Playlists.Remove(playlist);
+        await db.SaveChangesAsync(cancellationToken);
         return true;
     }
 
     /// <inheritdoc />
     public async Task<bool> AddTrackAsync(Guid playlistId, Guid trackId, CancellationToken cancellationToken)
     {
-        var playlist = await _db.Playlists
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+
+        var playlist = await db.Playlists
             .Include(p => p.Items)
             .FirstOrDefaultAsync(p => p.Id == playlistId, cancellationToken);
 
-        if (playlist is null || !await _db.Tracks.AnyAsync(t => t.Id == trackId, cancellationToken))
+        if (playlist is null || !await db.Tracks.AnyAsync(t => t.Id == trackId, cancellationToken))
         {
             return false;
         }
@@ -93,18 +113,20 @@ public sealed class PlaylistStore : IPlaylistStore
 
         // Added explicitly rather than through playlist.Items. The entity carries a
         // pre-set Id, which EF reads as an existing row and turns into an UPDATE.
-        _db.PlaylistItems.Add(item);
+        db.PlaylistItems.Add(item);
         playlist.Items.Add(item);
 
         playlist.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return true;
     }
 
     /// <inheritdoc />
     public async Task<bool> RemoveItemAsync(Guid playlistId, Guid itemId, CancellationToken cancellationToken)
     {
-        var playlist = await _db.Playlists
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+
+        var playlist = await db.Playlists
             .Include(p => p.Items)
             .FirstOrDefaultAsync(p => p.Id == playlistId, cancellationToken);
 
@@ -115,11 +137,11 @@ public sealed class PlaylistStore : IPlaylistStore
         }
 
         playlist.Items.Remove(item);
-        _db.PlaylistItems.Remove(item);
+        db.PlaylistItems.Remove(item);
         Renumber(playlist);
 
         playlist.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return true;
     }
 
@@ -129,7 +151,11 @@ public sealed class PlaylistStore : IPlaylistStore
         IReadOnlyList<Guid> itemIdsInOrder,
         CancellationToken cancellationToken)
     {
-        var playlist = await _db.Playlists
+        ArgumentNullException.ThrowIfNull(itemIdsInOrder);
+
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+
+        var playlist = await db.Playlists
             .Include(p => p.Items)
             .FirstOrDefaultAsync(p => p.Id == playlistId, cancellationToken);
 
@@ -147,12 +173,11 @@ public sealed class PlaylistStore : IPlaylistStore
 
         for (var position = 0; position < itemIdsInOrder.Count; position++)
         {
-            var item = playlist.Items.First(i => i.Id == itemIdsInOrder[position]);
-            item.Position = position;
+            playlist.Items.First(i => i.Id == itemIdsInOrder[position]).Position = position;
         }
 
         playlist.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
         return true;
     }
 

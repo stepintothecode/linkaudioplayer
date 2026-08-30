@@ -5,9 +5,9 @@ using MusicPlayer.Data;
 namespace MusicPlayer.TestSupport;
 
 // A real SQLite database held in memory for the lifetime of one test.
-// Hands out a fresh DbContext per call so tests see the same per request
-// isolation the server has, instead of one long lived change tracker.
-public sealed class SqliteTestDatabase : IAsyncDisposable
+// Doubles as the context factory the stores expect, so each operation gets a
+// fresh change tracker exactly as it does in the app.
+public sealed class SqliteTestDatabase : IDbContextFactory<LibraryDbContext>, IAsyncDisposable
 {
     private readonly SqliteConnection _connection;
 
@@ -20,14 +20,14 @@ public sealed class SqliteTestDatabase : IAsyncDisposable
 
         var database = new SqliteTestDatabase(connection);
 
-        await using var context = database.NewContext();
+        await using var context = database.CreateDbContext();
         await context.Database.EnsureCreatedAsync(cancellationToken);
 
         return database;
     }
 
-    /// A new context over the same database. Dispose it when the operation is done.
-    public LibraryDbContext NewContext()
+    /// A new context over the same database.
+    public LibraryDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<LibraryDbContext>()
             .UseSqlite(_connection)

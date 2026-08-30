@@ -4,13 +4,10 @@ namespace MusicPlayer.Extraction;
 
 /// <summary>
 /// Handles URLs that already point at a media file, such as a podcast enclosure or a
-/// self hosted mp3. Skips the yt-dlp subprocess entirely.
+/// self hosted mp3.
 /// </summary>
 public sealed class DirectUrlResolver : IMediaResolver
 {
-    private static readonly string[] MediaExtensions =
-        [".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".flac", ".wav", ".webm", ".mp4", ".m4b"];
-
     /// <inheritdoc />
     public string Name => "direct";
 
@@ -22,13 +19,8 @@ public sealed class DirectUrlResolver : IMediaResolver
     {
         ArgumentNullException.ThrowIfNull(uri);
 
-        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-        {
-            return false;
-        }
-
-        var extension = Path.GetExtension(uri.AbsolutePath);
-        return MediaExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
+        return (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+               && MediaExtensions.IsMediaPath(uri.AbsolutePath);
     }
 
     /// <summary>Derives a title from the file name. No network call is made.</summary>

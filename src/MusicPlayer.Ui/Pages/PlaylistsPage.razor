@@ -1,0 +1,63 @@
+@page "/playlists"
+@inject IPlaylistStore Playlists
+
+<h1 class="visually-hidden">Playlists</h1>
+
+<div class="row">
+    <input type="text" placeholder="New playlist name" @bind="_name" @bind:event="oninput" />
+    <button class="primary" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="CreateAsync">Create</button>
+</div>
+
+<h2>Playlists (@_playlists.Count)</h2>
+
+@if (_playlists.Count == 0)
+{
+    <p class="empty">No playlists yet.</p>
+}
+else
+{
+    <ul class="list">
+        @foreach (var playlist in _playlists)
+        {
+            <li class="item">
+                <div class="meta">
+                    <a class="title" href="@($"playlists/{playlist.Id}")">@playlist.Name</a>
+                    <span class="sub">@playlist.Items.Count track(s)</span>
+                </div>
+                <button class="icon" title="Delete" @onclick="() => DeleteAsync(playlist.Id)">✕</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<Playlist> _playlists = [];
+    private string _name = string.Empty;
+
+    /// <summary>Loads playlists on first render.</summary>
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    /// <summary>Creates a playlist with the entered name.</summary>
+    private async Task CreateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            return;
+        }
+
+        await Playlists.CreateAsync(_name.Trim(), description: null, CancellationToken.None);
+        _name = string.Empty;
+        await RefreshAsync();
+    }
+
+    /// <summary>Deletes a playlist, leaving its tracks in the library.</summary>
+    private async Task DeleteAsync(Guid id)
+    {
+        await Playlists.DeleteAsync(id, CancellationToken.None);
+        await RefreshAsync();
+    }
+
+    /// <summary>Reloads the playlist list.</summary>
+    private async Task RefreshAsync() =>
+        _playlists = [.. await Playlists.ListAsync(CancellationToken.None)];
+}

@@ -7,9 +7,13 @@ namespace MusicPlayer.Data;
 public static class DatabaseInitializer
 {
     /// <summary>Ensures the database directory and schema exist. Safe to call on every startup.</summary>
-    public static async Task InitializeAsync(LibraryDbContext db, CancellationToken cancellationToken = default)
+    public static async Task InitializeAsync(
+        IDbContextFactory<LibraryDbContext> factory,
+        CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(db);
+        ArgumentNullException.ThrowIfNull(factory);
+
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
         EnsureDirectoryExists(db.Database.GetConnectionString());
         await db.Database.EnsureCreatedAsync(cancellationToken);

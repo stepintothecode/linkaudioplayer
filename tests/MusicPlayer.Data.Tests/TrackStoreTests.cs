@@ -10,9 +10,13 @@ namespace MusicPlayer.Data.Tests;
 public sealed class TrackStoreTests : IAsyncLifetime
 {
     private SqliteTestDatabase _database = null!;
+    private TrackStore _store = null!;
 
-    public async ValueTask InitializeAsync() =>
+    public async ValueTask InitializeAsync()
+    {
         _database = await SqliteTestDatabase.CreateAsync(TestContext.Current.CancellationToken);
+        _store = new TrackStore(_database);
+    }
 
     public async ValueTask DisposeAsync() => await _database.DisposeAsync();
 
@@ -25,8 +29,7 @@ public sealed class TrackStoreTests : IAsyncLifetime
         await AddAsync("newest", now);
         await AddAsync("middle", now.AddHours(-1));
 
-        await using var context = _database.NewContext();
-        var tracks = await new TrackStore(context).ListAsync(TestContext.Current.CancellationToken);
+        var tracks = await _store.ListAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(["newest", "middle", "oldest"], tracks.Select(t => t.Title));
     }
@@ -37,8 +40,7 @@ public sealed class TrackStoreTests : IAsyncLifetime
         var stamp = new DateTimeOffset(2026, 3, 14, 15, 9, 26, TimeSpan.Zero);
         var id = await AddAsync("one", stamp);
 
-        await using var context = _database.NewContext();
-        var loaded = await new TrackStore(context).GetAsync(id, TestContext.Current.CancellationToken);
+        var loaded = await _store.GetAsync(id, TestContext.Current.CancellationToken);
 
         Assert.NotNull(loaded);
         Assert.Equal(stamp, loaded.AddedAt);
@@ -49,8 +51,7 @@ public sealed class TrackStoreTests : IAsyncLifetime
     {
         await AddAsync("one", DateTimeOffset.UtcNow);
 
-        await using var context = _database.NewContext();
-        var found = await new TrackStore(context).FindBySourceUrlAsync(
+        var found = await _store.FindBySourceUrlAsync(
             "https://example.com/one",
             TestContext.Current.CancellationToken);
 
@@ -63,17 +64,13 @@ public sealed class TrackStoreTests : IAsyncLifetime
     {
         var id = await AddAsync("one", DateTimeOffset.UtcNow);
 
-        await using var context = _database.NewContext();
-        var store = new TrackStore(context);
-
-        Assert.True(await store.DeleteAsync(id, TestContext.Current.CancellationToken));
-        Assert.False(await store.DeleteAsync(id, TestContext.Current.CancellationToken));
+        Assert.True(await _store.DeleteAsync(id, TestContext.Current.CancellationToken));
+        Assert.False(await _store.DeleteAsync(id, TestContext.Current.CancellationToken));
     }
 
     private async Task<Guid> AddAsync(string title, DateTimeOffset addedAt)
     {
-        await using var context = _database.NewContext();
-        var track = await new TrackStore(context).AddAsync(
+        var track = await _store.AddAsync(
             new Track
             {
                 SourceUrl = $"https://example.com/{title}",

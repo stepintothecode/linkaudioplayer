@@ -9,7 +9,7 @@ public sealed class Track
     /// <summary>Original URL the user supplied.</summary>
     public required string SourceUrl { get; set; }
 
-    /// <summary>Resolver that produced this track, for example "yt-dlp" or "direct".</summary>
+    /// <summary>Resolver that produced this track, for example "youtube" or "direct".</summary>
     public required string Provider { get; set; }
 
     /// <summary>Display title.</summary>

@@ -2,22 +2,30 @@
 
 ## The one idea worth knowing
 
-The server hands the browser a plain audio file.
+Everything runs on the phone.
 
 ```
-Android PWA  --HTTPS-->  ASP.NET Core on your NAS  -->  yt-dlp  -->  source
-  <audio>                  SQLite + cached audio
-  MediaSession
+Blazor UI in a WebView
+        |
+PlayerController          queue rules, platform agnostic
+        |
+IAudioPlayer  -->  AndroidAudioPlayer  -->  MediaPlayer + MediaSession
+                            |
+                   PlaybackService       foreground service, keeps audio alive
+        |
+IMediaCache   -->  files on device  <--  YoutubeExplode
+        |
+SQLite                                   playlists and library
 ```
 
-The phone sees `<audio src="/api/stream/{id}">` and nothing more. It has no
-idea where the audio came from. That is what makes lock screen playback work:
-there is no embedded player fighting the browser, just a media element the
-platform already knows how to keep alive.
+Audio plays through the native Android `MediaPlayer`, not through the WebView.
+That is deliberate: WebView audio is suspended when the app is backgrounded, so
+routing playback through it would defeat the whole point. The WebView draws the
+UI and nothing else.
 
-Everything else follows from that. Range requests make the scrubber work,
-including the one on the lock screen. Caching to disk makes offline work and
-doubles as insurance against the source throttling.
+`MediaSession` publishes title, artist, artwork and position to the system,
+which is what paints the lock screen controls. `PlaybackService` is a foreground
+service, which is what stops Android killing the process once the screen is off.
 
 ## Projects
 
@@ -25,48 +33,57 @@ Under `src/`:
 
 | Project | Holds | Depends on |
 | --- | --- | --- |
-| `MusicPlayer.Domain` | Entities. No dependencies at all. | nothing |
+| `MusicPlayer.Domain` | Entities and the cache key rule. | nothing |
 | `MusicPlayer.Abstractions` | Interfaces and value types. The seams. | Domain |
-| `MusicPlayer.Contracts` | DTOs and route names shared by client and server. | nothing |
-| `MusicPlayer.Extraction` | Source policy, resolvers, the yt-dlp subprocess. | Abstractions |
+| `MusicPlayer.Extraction` | Source policy, resolvers, downloaders. | Abstractions |
 | `MusicPlayer.Data` | EF Core, SQLite, stores. | Abstractions |
-| `MusicPlayer.Streaming` | On disk media cache, content types. | Abstractions |
-| `MusicPlayer.Api` | Endpoints, DI wiring, hosts the client. | all of the above |
-| `MusicPlayer.Web` | Blazor WebAssembly client and the audio JS. | Contracts |
+| `MusicPlayer.Storage` | On device media cache and download dispatch. | Abstractions |
+| `MusicPlayer.Library` | Adding, downloading and removing tracks. | Abstractions, Extraction |
+| `MusicPlayer.Playback` | Queue and transport rules. | Abstractions |
+| `MusicPlayer.Ui` | Razor pages and components. | Library, Playback |
+| `MusicPlayer.App` | MAUI host, Android audio and service. | all of the above |
 
-Domain and Abstractions know nothing about the web, the filesystem, or any
-external service. Everything external sits behind an interface named in one
-file, so the seam is findable and tests can supply a fake.
+Domain, Abstractions and Playback know nothing about Android, the filesystem or
+any network. That is what makes the queue rules testable without a device.
 
 ## The seams
 
 - `ISourcePolicy` decides whether a URL may be touched. One implementation,
   `DrmSourcePolicy`, and it is the project's legal guardrail.
 - `IMediaResolver` turns a URL into metadata. `DirectUrlResolver` handles plain
-  media links, `YtDlpResolver` handles everything else. Lowest `Priority` wins.
-- `IMediaDownloader` fetches audio to disk. Keeps the cache from knowing that
-  yt-dlp exists.
+  media links, `YoutubeResolver` handles YouTube. Lowest `Priority` wins.
+- `IMediaDownloader` fetches audio to disk, dispatched the same way.
 - `IMediaCache` stores and locates that audio.
+- `IAudioPlayer` is platform audio. Android implements it; tests fake it.
 - `IPlaylistStore` and `ITrackStore` are persistence.
 
 ## Playback flow
 
-1. Client posts a URL to `/api/tracks`.
-2. `MediaResolutionService` runs the policy, then picks a resolver.
-3. Metadata is stored. No audio is fetched yet.
-4. Client sets `<audio src="/api/stream/{id}">`.
-5. The stream endpoint serves the cached file, downloading it first if needed.
-6. `audio-player.js` mirrors the element's state into the Media Session API,
-   which is what draws the lock screen controls.
-
-First play on an uncached track waits for the download. Pre-cache with the
-download button to avoid that.
+1. The user pastes a URL. `MediaResolutionService` runs the policy, then picks a
+   resolver. Metadata is stored, no audio is fetched.
+2. On play, `PlayerController` asks `IMediaCache` for the file. If it is not
+   there, it downloads first and reports progress.
+3. The local path goes to `AndroidAudioPlayer`, which starts the foreground
+   service and hands the file to `MediaPlayer`.
+4. Lock screen buttons arrive back through the session callback as
+   `NextRequested` and `PreviousRequested`, which the controller turns into
+   queue moves.
 
 ## Decisions worth recording
 
-**yt-dlp runs as a subprocess rather than being reimplemented.** YouTube breaks
-extraction constantly and yt-dlp is the only thing that keeps pace. A C# port
-would be permanently out of date.
+**No server.** An earlier version ran ASP.NET Core with yt-dlp on a home
+machine. It worked, and is preserved on the `main` branch. It was dropped
+because it needed a machine left running.
+
+**YoutubeExplode rather than yt-dlp.** yt-dlp is Python and cannot ship in an
+APK. This is the project's weakest point: YoutubeExplode is in maintenance mode,
+while yt-dlp is actively developed by a large team. When YouTube changes its
+site, expect a wait. Nothing else in the design depends on it, so swapping in a
+different extractor means implementing two interfaces.
+
+**Native audio, not the WebView.** WebView media is suspended on backgrounding.
+Lock screen playback is the reason this project exists, so audio had to be
+native.
 
 **Timestamps are stored as unix milliseconds.** SQLite cannot `ORDER BY` a
 `DateTimeOffset` column. A converter in `LibraryDbContext` handles it.
@@ -76,9 +93,15 @@ would be permanently out of date.
 pre-set key on a navigation-discovered entity as an existing row, turning the
 insert into an update.
 
-**Blazor Server was rejected.** Its SignalR connection drops when the phone
-sleeps, which is exactly the case this project is built for. WebAssembly has no
-such problem.
+**Stores take a `IDbContextFactory`, not a context.** There is no request scope
+on a phone. A long lived change tracker caused stale reads, and a per operation
+context matches how the app actually behaves.
 
-**The player service is a singleton.** The queue and the audio element have to
+**`PlayerController` is a singleton.** The queue and the audio session have to
 survive navigation between pages.
+
+## Not built
+
+- Shuffle. Repeat is there; shuffle is not.
+- Importing a whole YouTube playlist in one paste.
+- Search. Links are pasted, by design, per the legal boundaries.
