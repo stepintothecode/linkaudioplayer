@@ -23,7 +23,8 @@ public sealed class TrackStore : ITrackStore
 
         return await db.Tracks
             .AsNoTracking()
-            .OrderByDescending(t => t.AddedAt)
+            .OrderBy(t => t.Position)
+            .ThenByDescending(t => t.AddedAt)
             .ToListAsync(cancellationToken);
     }
 
@@ -50,11 +51,45 @@ public sealed class TrackStore : ITrackStore
     /// <inheritdoc />
     public async Task<Track> AddAsync(Track track, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(track);
+
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
 
+        // One statement, so adding stays cheap however large the library grows.
+        await db.Tracks.ExecuteUpdateAsync(
+            setters => setters.SetProperty(t => t.Position, t => t.Position + 1),
+            cancellationToken);
+
+        track.Position = 0;
         db.Tracks.Add(track);
         await db.SaveChangesAsync(cancellationToken);
         return track;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ReorderAsync(
+        IReadOnlyList<Guid> trackIdsInOrder,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(trackIdsInOrder);
+
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+        var tracks = await db.Tracks.ToListAsync(cancellationToken);
+
+        // Ignore the request unless it names exactly the tracks the library holds.
+        var known = tracks.Select(t => t.Id).ToHashSet();
+        if (trackIdsInOrder.Count != known.Count || !trackIdsInOrder.All(known.Contains))
+        {
+            return false;
+        }
+
+        for (var position = 0; position < trackIdsInOrder.Count; position++)
+        {
+            tracks.First(t => t.Id == trackIdsInOrder[position]).Position = position;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     /// <inheritdoc />

@@ -33,6 +33,7 @@ public sealed class LibraryDbContext : DbContext
             entity.Property(t => t.Title).IsRequired();
             entity.Property(t => t.CacheKey).IsRequired();
             entity.Property(t => t.AddedAt).HasConversion(UtcMilliseconds);
+            entity.HasIndex(t => t.Position);
             entity.HasIndex(t => t.SourceUrl).IsUnique();
             entity.HasIndex(t => t.CacheKey).IsUnique();
         });

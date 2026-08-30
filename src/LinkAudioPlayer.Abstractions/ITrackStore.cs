@@ -19,4 +19,7 @@ public interface ITrackStore
 
     /// <summary>Deletes a track and its playlist membership rows. Returns false when missing.</summary>
     Task<bool> DeleteAsync(Guid trackId, CancellationToken cancellationToken);
+
+    /// <summary>Reorders the library to match the supplied order. Returns false on a mismatch.</summary>
+    Task<bool> ReorderAsync(IReadOnlyList<Guid> trackIdsInOrder, CancellationToken cancellationToken);
 }

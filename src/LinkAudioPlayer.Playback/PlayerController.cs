@@ -1,5 +1,6 @@
 using LinkAudioPlayer.Abstractions;
 using LinkAudioPlayer.Domain;
+using Microsoft.Extensions.Logging;
 
 namespace LinkAudioPlayer.Playback;
 
@@ -11,14 +12,16 @@ public sealed class PlayerController : IAsyncDisposable
 {
     private readonly IAudioPlayer _player;
     private readonly IMediaCache _cache;
+    private readonly ILogger<PlayerController> _logger;
     private readonly List<Track> _queue = [];
     private CancellationTokenSource? _loadCancellation;
 
     /// <summary>Creates the controller over the platform player and the media cache.</summary>
-    public PlayerController(IAudioPlayer player, IMediaCache cache)
+    public PlayerController(IAudioPlayer player, IMediaCache cache, ILogger<PlayerController> logger)
     {
         _player = player;
         _cache = cache;
+        _logger = logger;
 
         _player.IsPlayingChanged += OnIsPlayingChanged;
         _player.PositionChanged += OnPositionChanged;
@@ -224,6 +227,8 @@ public sealed class PlayerController : IAsyncDisposable
         try
         {
             var path = _cache.TryGetPath(track.CacheKey);
+            _logger.LogInformation(
+                "Loading '{Title}', cached: {Cached}", track.Title, path is not null);
 
             if (path is null)
             {
@@ -251,21 +256,40 @@ public sealed class PlayerController : IAsyncDisposable
                 track.DurationSeconds is > 0 ? TimeSpan.FromSeconds(track.DurationSeconds.Value) : null,
                 track.ThumbnailUrl);
 
+            _logger.LogInformation("Handing '{Path}' to the platform player", path);
             await _player.LoadAsync(path, metadata, cancellationToken);
+            _logger.LogInformation("Playback started for '{Title}'", track.Title);
         }
         catch (OperationCanceledException)
         {
-            // Superseded by another load, or stopped. Nothing to report.
+            // Superseded by another load, or stopped. Logged rather than ignored,
+            // because a silent cancellation looks identical to nothing happening.
+            _logger.LogInformation("Loading '{Title}' was cancelled", track.Title);
         }
         catch (Exception ex)
         {
-            Error = ex.Message;
+            // Must be logged here. This is the only place a playback failure surfaces,
+            // and an unlogged one leaves the user with a dead play button and no clue.
+            _logger.LogError(ex, "Could not play '{Title}' from {Url}", track.Title, track.SourceUrl);
+            Error = Describe(ex);
         }
         finally
         {
             IsPreparing = false;
             StateChanged?.Invoke();
         }
+    }
+
+    /// <summary>Innermost message, which is usually the useful one.</summary>
+    private static string Describe(Exception exception)
+    {
+        var current = exception;
+        while (current.InnerException is not null)
+        {
+            current = current.InnerException;
+        }
+
+        return current.Message;
     }
 
     /// <summary>Cancels any load still in flight.</summary>
@@ -314,6 +338,7 @@ public sealed class PlayerController : IAsyncDisposable
 
     private void OnFailed(object? sender, string message)
     {
+        _logger.LogError("Platform player reported: {Message}", message);
         Error = message;
         IsPlaying = false;
         StateChanged?.Invoke();

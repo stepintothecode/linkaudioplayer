@@ -116,6 +116,28 @@ renderer, and every button in the app stops responding until it is force closed.
 Handlers route through `UiErrorState.TryAsync`, and `MainLayout` wraps the body in
 an `ErrorBoundary` as a second line.
 
+**Playback failures are logged, not just stored.** `PlayerController` catches into an
+`Error` property. When nothing logged or rendered that property, a failed play was
+completely silent: no sound, no message, no log line. It now logs with the stack
+trace and the now playing bar renders it.
+
+**Prefer an mp4 audio stream over the highest bitrate one.** YouTube's best audio is
+normally WebM Opus, which Android's `MediaPlayer` decodes inconsistently across
+versions. A slightly smaller AAC stream that reliably plays is the better trade.
+
+**The cache ignores `.part` files.** A download writes to `{key}.{ext}.part` and
+renames on success. The lookup glob `{key}.*` matched the partial too, so an
+interrupted download looked cached and handed a truncated file to the player on
+every retry.
+
+**Schema changes need a patch step.** `EnsureCreated` only builds a schema from
+nothing, so an app updated in place keeps its old table. `DatabaseInitializer`
+checks `PRAGMA table_info` and adds missing columns and indexes.
+
+**`android:icon` must be declared in the manifest.** The generated mipmap resources
+are packaged regardless, but without the attribute the launcher shows the default
+Android robot.
+
 **Reordering uses pointer events, not HTML5 drag and drop**, which never fires for
 touch in an Android web view. `reorder.js` shifts rows visually and reports the
 final move; it never mutates the DOM, because Blazor owns that.
@@ -123,5 +145,7 @@ final move; it never mutates the DOM, because Blazor owns that.
 ## Not built
 
 - Shuffle. Repeat is there; shuffle is not.
+- Proper EF migrations. The patch step in `DatabaseInitializer` covers the one
+  column added so far; a third or fourth would justify migrations instead.
 - Importing a whole YouTube playlist in one paste.
 - Search. Links are pasted, by design, per the legal boundaries.

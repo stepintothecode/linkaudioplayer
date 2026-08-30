@@ -30,6 +30,13 @@ public sealed class Track
     /// <summary>When the track was added to the library.</summary>
     public DateTimeOffset AddedAt { get; set; } = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    /// Sort order in the library, ascending, dense from zero.
+    /// A new track takes position zero and pushes the rest down, so the library reads
+    /// newest first until the user drags something.
+    /// </summary>
+    public int Position { get; set; }
+
     /// <summary>Playlist rows referencing this track.</summary>
     public List<PlaylistItem> PlaylistItems { get; set; } = [];
 }

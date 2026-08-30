@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using LinkAudioPlayer.Domain;
 using LinkAudioPlayer.Playback;
 using LinkAudioPlayer.TestSupport;
@@ -13,7 +14,8 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     private readonly FakeMediaCache _cache = new();
     private readonly PlayerController _controller;
 
-    public PlayerControllerTests() => _controller = new PlayerController(_player, _cache);
+    public PlayerControllerTests() =>
+        _controller = new PlayerController(_player, _cache, NullLogger<PlayerController>.Instance);
 
     public async ValueTask DisposeAsync() => await _controller.DisposeAsync();
 

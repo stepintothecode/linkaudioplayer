@@ -546,3 +546,13 @@ button.icon.on {
   text-decoration: none;
   white-space: nowrap;
 }
+
+/* Playback failures shown inside the player rather than above the page. */
+.error.player-error {
+  margin: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  font-size: 0.8rem;
+}

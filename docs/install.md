@@ -97,6 +97,11 @@ nothing else on the phone can read them.
 To clear downloads without losing playlists, remove individual tracks from the
 library and add them again.
 
+## Reordering
+
+Both the Library and a playlist reorder by dragging the six dot handle on the left
+of a row. The library keeps its own order, so a track stays where you put it.
+
 ## Reading the logs
 
 Anything that fails shows a banner with a **See logs** link, and there is a
@@ -108,6 +113,11 @@ Use **Copy all** to lift the whole buffer out as text, and **Problems only** to
 filter to warnings and errors.
 
 ## When something breaks
+
+**Play does nothing at all.** This was a real bug and is fixed. If it recurs, the
+now playing bar shows the reason with a See logs link, and the log holds the full
+trace including which audio stream was chosen.
+
 
 **A link fails to resolve.** YouTube changes its site regularly and the
 extraction library has to catch up. Update it and rebuild:

@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LinkAudioPlayer.Data;
 
-/// <summary>Creates the SQLite file and schema on first run.</summary>
+/// <summary>Creates the SQLite file and schema on first run, and patches older files.</summary>
 public static class DatabaseInitializer
 {
-    /// <summary>Ensures the database directory and schema exist. Safe to call on every startup.</summary>
+    /// <summary>Ensures the database directory, schema and added columns exist.</summary>
     public static async Task InitializeAsync(
         IDbContextFactory<LibraryDbContext> factory,
         CancellationToken cancellationToken = default)
@@ -17,6 +17,66 @@ public static class DatabaseInitializer
 
         EnsureDirectoryExists(db.Database.GetConnectionString());
         await db.Database.EnsureCreatedAsync(cancellationToken);
+        await AddMissingColumnsAsync(db, cancellationToken);
+    }
+
+    /// <summary>
+    /// Adds columns introduced after a database was first created.
+    /// EnsureCreated only builds a schema from nothing, so an app updated in place
+    /// keeps its old table and would fail on the first query touching a new column.
+    /// </summary>
+    private static async Task AddMissingColumnsAsync(LibraryDbContext db, CancellationToken cancellationToken)
+    {
+        if (await ColumnExistsAsync(db, "Tracks", "Position", cancellationToken))
+        {
+            return;
+        }
+
+        await db.Database.ExecuteSqlRawAsync(
+            "ALTER TABLE \"Tracks\" ADD COLUMN \"Position\" INTEGER NOT NULL DEFAULT 0;",
+            cancellationToken);
+
+        // Existing rows all share position zero, so seed them from the order they
+        // were previously shown in, newest first.
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            UPDATE "Tracks"
+            SET "Position" = (
+                SELECT COUNT(*) FROM "Tracks" AS "other"
+                WHERE "other"."AddedAt" > "Tracks"."AddedAt"
+            );
+            """,
+            cancellationToken);
+
+        // EnsureCreated skipped the index because the table already existed.
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE INDEX IF NOT EXISTS \"IX_Tracks_Position\" ON \"Tracks\" (\"Position\");",
+            cancellationToken);
+    }
+
+    /// <summary>True when the table already has the column.</summary>
+    private static async Task<bool> ColumnExistsAsync(
+        LibraryDbContext db,
+        string table,
+        string column,
+        CancellationToken cancellationToken)
+    {
+        var connection = db.Database.GetDbConnection();
+        await db.Database.OpenConnectionAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info(\"{table}\");";
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>SQLite fails rather than creating missing parent directories, so create them here.</summary>

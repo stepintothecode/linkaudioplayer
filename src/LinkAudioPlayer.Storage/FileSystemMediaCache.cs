@@ -29,11 +29,19 @@ public sealed class FileSystemMediaCache : IMediaCache
         Directory.CreateDirectory(_root);
     }
 
+    /// <summary>Suffix a downloader uses while a file is still being written.</summary>
+    private const string PartialSuffix = ".part";
+
     /// <inheritdoc />
     public string? TryGetPath(string cacheKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cacheKey);
-        return Directory.EnumerateFiles(_root, cacheKey + ".*").FirstOrDefault();
+
+        // A half written ".part" file also matches the glob. Treating one as cached
+        // hands a truncated file to the player, which then fails on every retry.
+        return Directory
+            .EnumerateFiles(_root, cacheKey + ".*")
+            .FirstOrDefault(path => !path.EndsWith(PartialSuffix, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <inheritdoc />
@@ -73,23 +81,24 @@ public sealed class FileSystemMediaCache : IMediaCache
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(cacheKey);
 
-        var path = TryGetPath(cacheKey);
-        if (path is null)
+        // Includes any abandoned ".part" file, so a failed download does not linger.
+        foreach (var path in Directory.EnumerateFiles(_root, cacheKey + ".*"))
         {
-            return;
-        }
-
-        try
-        {
-            File.Delete(path);
-        }
-        catch (IOException ex)
-        {
-            _logger.LogWarning(ex, "Could not delete cached file {Path}", path);
+            try
+            {
+                File.Delete(path);
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning(ex, "Could not delete cached file {Path}", path);
+            }
         }
     }
 
     /// <inheritdoc />
     public long GetSizeBytes() =>
-        Directory.EnumerateFiles(_root).Sum(path => new FileInfo(path).Length);
+        Directory
+            .EnumerateFiles(_root)
+            .Where(path => !path.EndsWith(PartialSuffix, StringComparison.OrdinalIgnoreCase))
+            .Sum(path => new FileInfo(path).Length);
 }

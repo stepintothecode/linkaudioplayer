@@ -54,6 +54,16 @@
             </button>
             <button class="icon" title="Stop" @onclick="Player.StopAsync">&#9209;</button>
         </div>
+
+        @* Playback failures happen off the click path, so they surface here rather
+           than through UiErrorState. Without this the play button just goes quiet. *@
+        @if (Player.Error is { } error)
+        {
+            <div class="error player-error" role="alert">
+                <span class="text">@error</span>
+                <a class="logs-link" href="logs">See logs</a>
+            </div>
+        }
     </div>
 }
 

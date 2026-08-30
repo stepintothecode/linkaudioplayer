@@ -102,6 +102,10 @@ public sealed class TrackLibraryService
         return true;
     }
 
+    /// <summary>Reorders the library to match the supplied track order.</summary>
+    public Task<bool> ReorderAsync(IReadOnlyList<Guid> trackIdsInOrder, CancellationToken cancellationToken) =>
+        _tracks.ReorderAsync(trackIdsInOrder, cancellationToken);
+
     /// <summary>Total bytes of downloaded audio.</summary>
     public long GetDownloadedBytes() => _cache.GetSizeBytes();
 
