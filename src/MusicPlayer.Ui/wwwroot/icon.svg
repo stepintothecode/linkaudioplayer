@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Music Player">
-  <rect width="512" height="512" rx="112" fill="#101014"/>
-  <path d="M196 132l160-28v56l-160 28z" fill="#6c8cff"/>
-  <rect x="196" y="132" width="12" height="216" fill="#6c8cff"/>
-  <rect x="344" y="104" width="12" height="196" fill="#6c8cff"/>
-  <ellipse cx="170" cy="348" rx="42" ry="34" fill="#6c8cff"/>
-  <ellipse cx="318" cy="300" rx="42" ry="34" fill="#6c8cff"/>
-</svg>

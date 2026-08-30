@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <title>LinkAudioPlayer</title>
+    <base href="/" />
+    <link rel="stylesheet" href="_content/LinkAudioPlayer.Ui/css/app.css" />
+</head>
+
+<body>
+    <div id="app">
+        <div class="boot">Loading</div>
+    </div>
+
+    <!-- Shown only if Blazor itself fails to start or a render loop dies. The log
+         buffer outlives the renderer, so the link is worth having here too. -->
+    <div id="blazor-error-ui">
+        <span style="flex:1">Something went wrong.</span>
+        <a href="logs">See logs</a>
+        <a href="">Reload</a>
+    </div>
+
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
+</body>
+
+</html>

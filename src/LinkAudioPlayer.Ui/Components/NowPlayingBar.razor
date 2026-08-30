@@ -1,0 +1,113 @@
+@implements IDisposable
+@inject PlayerController Player
+
+@* Mirrors what the Android lock screen shows. *@
+@if (Player.Current is { } track)
+{
+    <div class="player">
+        @if (Player.IsPreparing)
+        {
+            <div class="scrubber preparing" style="--progress: @Percent(Player.PrepareProgress)">
+                <div class="scrub-fill"></div>
+            </div>
+        }
+        else
+        {
+            @* The fill transitions between polls, so the bar glides rather than stepping. *@
+            <div class="scrubber" style="--progress: @Percent(Fraction)">
+                <div class="scrub-fill"></div>
+                <input type="range"
+                       min="0"
+                       max="@Math.Max(Player.Duration.TotalSeconds, 1).ToString("0.###", Culture)"
+                       step="0.5"
+                       value="@Slider.ToString("0.###", Culture)"
+                       aria-label="Seek"
+                       @oninput="OnScrub"
+                       @onchange="OnSeekCommitted" />
+            </div>
+        }
+
+        <div class="inner">
+            <div class="track">
+                <span class="title">@track.Title</span>
+                <span class="time">
+                    @if (Player.IsPreparing)
+                    {
+                        @($"Downloading {Player.PrepareProgress:P0}")
+                    }
+                    else
+                    {
+                        @($"{Format(Player.Position)} / {Format(Player.Duration)}")
+                    }
+                </span>
+            </div>
+
+            <button class="icon" title="Previous" @onclick="Player.PreviousAsync">&#9198;</button>
+            <button class="icon primary" title="Play or pause" disabled="@Player.IsPreparing"
+                    @onclick="Player.TogglePlayPauseAsync">
+                @(Player.IsPlaying ? "⏸" : "▶")
+            </button>
+            <button class="icon" title="Next" @onclick="Player.NextAsync">&#9197;</button>
+            <button class="icon @(Player.Repeat == RepeatMode.Off ? "" : "on")"
+                    title="@($"Repeat: {Player.Repeat}")" @onclick="Player.CycleRepeat">
+                @(Player.Repeat == RepeatMode.One ? "\U0001F502" : "\U0001F501")
+            </button>
+            <button class="icon" title="Stop" @onclick="Player.StopAsync">&#9209;</button>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly System.Globalization.CultureInfo Culture =
+        System.Globalization.CultureInfo.InvariantCulture;
+
+    private double? _scrubbing;
+
+    /// <summary>Position shown on the slider, held steady while the user drags.</summary>
+    private double Slider => _scrubbing ?? Player.Position.TotalSeconds;
+
+    /// <summary>Progress from 0 to 1, guarding against an unknown duration.</summary>
+    private double Fraction =>
+        Player.Duration.TotalSeconds > 0
+            ? Math.Clamp(Slider / Player.Duration.TotalSeconds, 0, 1)
+            : 0;
+
+    /// <summary>Subscribes to player state so the bar redraws as playback progresses.</summary>
+    protected override void OnInitialized() => Player.StateChanged += OnStateChanged;
+
+    /// <summary>Unsubscribes to avoid leaking the handler.</summary>
+    public void Dispose() => Player.StateChanged -= OnStateChanged;
+
+    /// <summary>Marshals the player callback onto the renderer thread.</summary>
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>Tracks the thumb while dragging, without seeking on every pixel.</summary>
+    private void OnScrub(ChangeEventArgs args)
+    {
+        if (TryRead(args, out var seconds))
+        {
+            _scrubbing = seconds;
+        }
+    }
+
+    /// <summary>Seeks once the user lets go.</summary>
+    private async Task OnSeekCommitted(ChangeEventArgs args)
+    {
+        if (TryRead(args, out var seconds))
+        {
+            await Player.SeekAsync(TimeSpan.FromSeconds(seconds));
+        }
+
+        _scrubbing = null;
+    }
+
+    private static bool TryRead(ChangeEventArgs args, out double seconds) =>
+        double.TryParse(args.Value?.ToString(), System.Globalization.NumberStyles.Float, Culture, out seconds);
+
+    /// <summary>Formats a fraction as a CSS percentage.</summary>
+    private static string Percent(double fraction) =>
+        (Math.Clamp(fraction, 0, 1) * 100).ToString("0.##", Culture) + "%";
+
+    /// <summary>Formats a duration as m:ss.</summary>
+    private static string Format(TimeSpan value) => value.ToString(@"m\:ss");
+}

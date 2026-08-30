@@ -1,6 +1,6 @@
-using MusicPlayer.Abstractions;
+using LinkAudioPlayer.Abstractions;
 
-namespace MusicPlayer.TestSupport;
+namespace LinkAudioPlayer.TestSupport;
 
 // In-memory stand-in for the on-disk cache. Nothing is cached until a test says so,
 // or until StoreAsync is allowed to "download" it.

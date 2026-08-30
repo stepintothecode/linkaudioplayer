@@ -12,7 +12,7 @@ are refused on principle regardless of quality.
 ```bash
 dotnet build
 dotnet test
-dotnet build src/MusicPlayer.App -f net10.0-android
+dotnet build src/LinkAudioPlayer.App -f net10.0-android
 ```
 
 `dotnet test` needs neither the workload nor a device. Only the app project does.
@@ -26,8 +26,8 @@ tests/   mirrors src/, one test project per source project
 docs/    the docs listed in the README
 ```
 
-The test tree mirrors the source tree. `src/MusicPlayer.Playback` is tested by
-`tests/MusicPlayer.Playback.Tests`. Finding the tests for a file should never
+The test tree mirrors the source tree. `src/LinkAudioPlayer.Playback` is tested by
+`tests/LinkAudioPlayer.Playback.Tests`. Finding the tests for a file should never
 need a search.
 
 ## Conventions
@@ -63,7 +63,8 @@ Use `SqliteTestDatabase` from `tests/support`, which doubles as the context
 factory the stores take.
 
 Playback is tested against `FakeAudioPlayer` and `FakeMediaCache`, also in
-`tests/support`. Everything about the queue, repeat behaviour and the lock
+`tests/support`. `UiErrorState` and the log buffer have their own tests, because
+they are what keeps a failure from taking the app down. Everything about the queue, repeat behaviour and the lock
 screen buttons is covered there, because none of it can be checked on a device
 without a person watching. Platform code in `Platforms/Android` is not unit
 tested; it has to be exercised on a phone.
@@ -74,6 +75,23 @@ what used to happen:
 ```csharp
 // Used to throw NotSupportedException: SQLite cannot ORDER BY a DateTimeOffset column.
 ```
+
+## Error handling
+
+Never let an exception escape a UI event handler or lifecycle method. It tears
+down the Blazor renderer and the whole app stops responding until it is force
+closed, which is far worse than the original failure.
+
+Route work through `UiErrorState.TryAsync`, which logs the exception with its
+stack trace and shows a banner with a link to the log viewer:
+
+```csharp
+await Errors.TryAsync("Adding the link", async () =>
+    await LibraryService.AddFromUrlAsync(url, CancellationToken.None));
+```
+
+`MainLayout` also wraps the page body in an `ErrorBoundary`, but that is a safety
+net rather than the plan.
 
 ## Adding a source
 
@@ -88,3 +106,13 @@ An earlier design ran ASP.NET Core with yt-dlp on a home machine, reached over
 Tailscale. It works and is preserved on the `main` branch. It supported far more
 sites, because yt-dlp does, but needed a machine left running. The Android app
 lives on `android-app`.
+
+## Logo
+
+`tools/make-icons.py` draws the mark with Pillow and writes every size into
+`assets/logo/`. Run it after changing the artwork, then copy the 1024 foreground
+into `src/LinkAudioPlayer.App/Resources/AppIcon/appiconfg.png`:
+
+```bash
+python tools/make-icons.py assets/logo
+```

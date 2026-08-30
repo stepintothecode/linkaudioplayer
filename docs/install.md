@@ -15,13 +15,13 @@ Nothing is needed on the phone beyond Android 8 or later.
 ## Build the APK
 
 ```bash
-dotnet build src/MusicPlayer.App -f net10.0-android
+dotnet build src/LinkAudioPlayer.App -f net10.0-android
 ```
 
 Output:
 
 ```
-src/MusicPlayer.App/bin/Debug/net10.0-android/com.kartikeyan.musicplayer-Signed.apk
+src/LinkAudioPlayer.App/bin/Debug/net10.0-android/com.kartikeyan.linkaudioplayer-Signed.apk
 ```
 
 Around 17 MB. It is signed with the local debug key, which is enough to install
@@ -32,7 +32,7 @@ and use. The Release build below runs faster but is a larger download.
 Over USB, with developer options and USB debugging enabled:
 
 ```bash
-adb install -r src/MusicPlayer.App/bin/Debug/net10.0-android/com.kartikeyan.musicplayer-Signed.apk
+adb install -r src/LinkAudioPlayer.App/bin/Debug/net10.0-android/com.kartikeyan.linkaudioplayer-Signed.apk
 ```
 
 Or copy the APK to the phone however you like and tap it. Android will ask you
@@ -57,14 +57,14 @@ takes considerably longer to build, and the APK is larger, around 40 MB, because
 it carries precompiled native code for every supported CPU.
 
 ```bash
-dotnet publish src/MusicPlayer.App -f net10.0-android -c Release
+dotnet publish src/LinkAudioPlayer.App -f net10.0-android -c Release
 ```
 
 To build for one phone only, name its architecture. Almost every phone since
 2019 is `android-arm64`, and this roughly halves the size:
 
 ```bash
-dotnet publish src/MusicPlayer.App -f net10.0-android -c Release -r android-arm64
+dotnet publish src/LinkAudioPlayer.App -f net10.0-android -c Release -r android-arm64
 ```
 
 By default this is signed with the debug key too. To sign with your own key,
@@ -78,7 +78,7 @@ keytool -genkeypair -v -keystore player.keystore -alias player \
 Then pass it to the publish:
 
 ```bash
-dotnet publish src/MusicPlayer.App -f net10.0-android -c Release \
+dotnet publish src/LinkAudioPlayer.App -f net10.0-android -c Release \
   -p:AndroidKeyStore=true \
   -p:AndroidSigningKeyStore=player.keystore \
   -p:AndroidSigningKeyAlias=player \
@@ -97,13 +97,23 @@ nothing else on the phone can read them.
 To clear downloads without losing playlists, remove individual tracks from the
 library and add them again.
 
+## Reading the logs
+
+Anything that fails shows a banner with a **See logs** link, and there is a
+**Logs** tab in the header. The buffer keeps the last 500 entries with full stack
+traces, and it deliberately survives the failure that produced it, so the detail
+is still there afterwards.
+
+Use **Copy all** to lift the whole buffer out as text, and **Problems only** to
+filter to warnings and errors.
+
 ## When something breaks
 
 **A link fails to resolve.** YouTube changes its site regularly and the
 extraction library has to catch up. Update it and rebuild:
 
 ```bash
-dotnet add src/MusicPlayer.Extraction package YoutubeExplode
+dotnet add src/LinkAudioPlayer.Extraction package YoutubeExplode
 ```
 
 If a newer version does not exist yet, the fix has to wait upstream. This is the
@@ -113,6 +123,11 @@ known weak point of running without a server, and is covered in
 **No lock screen controls.** Check that notifications are allowed for the app in
 Android settings. The foreground service starts either way, but the controls are
 part of the notification.
+
+**Nothing responds after an error.** This should no longer happen. Every screen
+sits inside an error boundary and every action routes through one handler, so a
+failure shows a banner rather than taking the UI down. If you do hit it, the log
+buffer outlives the renderer, so open Logs and copy the trace.
 
 **Playback stops when the screen locks.** Some manufacturers, Xiaomi, Oppo,
 OnePlus and Samsung in particular, kill background apps aggressively. Allow the

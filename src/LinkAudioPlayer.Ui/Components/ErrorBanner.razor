@@ -1,0 +1,23 @@
+@implements IDisposable
+@inject UiErrorState Errors
+
+@* Every failure surfaces here, always with a way through to the full stack trace. *@
+@if (Errors.Message is { } message)
+{
+    <div class="error" role="alert">
+        <span class="text">@message</span>
+        <a class="logs-link" href="logs">See logs</a>
+        <button class="dismiss" title="Dismiss" @onclick="Errors.Clear">✕</button>
+    </div>
+}
+
+@code {
+    /// <summary>Subscribes so the banner appears as soon as something fails.</summary>
+    protected override void OnInitialized() => Errors.Changed += OnChanged;
+
+    /// <summary>Unsubscribes to avoid leaking the handler.</summary>
+    public void Dispose() => Errors.Changed -= OnChanged;
+
+    /// <summary>Marshals the callback onto the renderer thread.</summary>
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+}

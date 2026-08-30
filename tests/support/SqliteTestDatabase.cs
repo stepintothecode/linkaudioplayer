@@ -1,8 +1,8 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using MusicPlayer.Data;
+using LinkAudioPlayer.Data;
 
-namespace MusicPlayer.TestSupport;
+namespace LinkAudioPlayer.TestSupport;
 
 // A real SQLite database held in memory for the lifetime of one test.
 // Doubles as the context factory the stores expect, so each operation gets a

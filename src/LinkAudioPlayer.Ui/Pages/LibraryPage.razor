@@ -1,0 +1,133 @@
+@page "/"
+@inject TrackLibraryService LibraryService
+@inject PlayerController Player
+@inject UiErrorState Errors
+
+<h1 class="visually-hidden">Library</h1>
+
+<div class="row">
+    <input type="url"
+           inputmode="url"
+           placeholder="Paste a YouTube link"
+           @bind="_url"
+           @bind:event="oninput"
+           @onkeydown="OnKeyDown" />
+    <button class="primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_url))" @onclick="AddAsync">
+        @(_busy ? "Adding" : "Add")
+    </button>
+</div>
+
+<h2>Tracks (@_tracks.Count)</h2>
+
+@if (_tracks.Count == 0)
+{
+    <p class="empty">Nothing here yet. Add a link above.</p>
+}
+else
+{
+    <ul class="list">
+        @foreach (var (entry, index) in _tracks.Select((t, i) => (t, i)))
+        {
+            <li class="item @(Player.Current?.Id == entry.Track.Id ? "playing" : "")">
+                <img class="art" src="@Artwork(entry.Track)" alt="" loading="lazy" />
+                <div class="meta">
+                    <span class="title">@entry.Track.Title</span>
+                    <span class="sub">
+                        @(entry.Track.Artist ?? entry.Track.Provider)
+                        @if (entry.IsDownloaded)
+                        {
+                            <span class="badge cached">offline</span>
+                        }
+                    </span>
+                </div>
+                <button class="icon" title="Play" @onclick="() => PlayFromAsync(index)">▶</button>
+                <button class="icon" title="Download for offline"
+                        disabled="@(entry.IsDownloaded || _downloading.Contains(entry.Track.Id))"
+                        @onclick="() => DownloadAsync(entry.Track.Id)">
+                    @(_downloading.Contains(entry.Track.Id) ? "…" : "⬇")
+                </button>
+                <button class="icon" title="Remove" @onclick="() => DeleteAsync(entry.Track.Id)">✕</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<LibraryTrack> _tracks = [];
+    private readonly HashSet<Guid> _downloading = [];
+    private string _url = string.Empty;
+    private bool _busy;
+
+    /// <summary>Loads the library on first render.</summary>
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    /// <summary>Submits the URL when the user presses Enter.</summary>
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await AddAsync();
+        }
+    }
+
+    /// <summary>Resolves the entered URL and adds the track.</summary>
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_url) || _busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        var url = _url.Trim();
+
+        var added = await Errors.TryAsync(
+            "Adding the link",
+            async () => await LibraryService.AddFromUrlAsync(url, CancellationToken.None));
+
+        if (added)
+        {
+            _url = string.Empty;
+        }
+
+        _busy = false;
+        await RefreshAsync();
+    }
+
+    /// <summary>Queues the whole library starting at the chosen track.</summary>
+    private async Task PlayFromAsync(int index) => await Errors.TryAsync(
+        "Playing the track",
+        async () => await Player.PlayQueueAsync(_tracks.Select(t => t.Track), index));
+
+    /// <summary>Downloads a track so it plays instantly and works offline.</summary>
+    private async Task DownloadAsync(Guid trackId)
+    {
+        _downloading.Add(trackId);
+
+        await Errors.TryAsync(
+            "Downloading the track",
+            async () => await LibraryService.DownloadAsync(trackId, progress: null, CancellationToken.None));
+
+        _downloading.Remove(trackId);
+        await RefreshAsync();
+    }
+
+    /// <summary>Removes a track and its downloaded audio.</summary>
+    private async Task DeleteAsync(Guid trackId)
+    {
+        await Errors.TryAsync(
+            "Removing the track",
+            async () => await LibraryService.DeleteAsync(trackId, CancellationToken.None));
+
+        await RefreshAsync();
+    }
+
+    /// <summary>Reloads the track list.</summary>
+    private async Task RefreshAsync() => await Errors.TryAsync(
+        "Loading the library",
+        async () => _tracks = [.. await LibraryService.ListAsync(CancellationToken.None)]);
+
+    /// <summary>Falls back to the app icon when a track has no artwork.</summary>
+    private static string Artwork(Track track) =>
+        track.ThumbnailUrl ?? "_content/LinkAudioPlayer.Ui/icon.svg";
+}

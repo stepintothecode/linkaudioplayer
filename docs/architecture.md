@@ -33,15 +33,16 @@ Under `src/`:
 
 | Project | Holds | Depends on |
 | --- | --- | --- |
-| `MusicPlayer.Domain` | Entities and the cache key rule. | nothing |
-| `MusicPlayer.Abstractions` | Interfaces and value types. The seams. | Domain |
-| `MusicPlayer.Extraction` | Source policy, resolvers, downloaders. | Abstractions |
-| `MusicPlayer.Data` | EF Core, SQLite, stores. | Abstractions |
-| `MusicPlayer.Storage` | On device media cache and download dispatch. | Abstractions |
-| `MusicPlayer.Library` | Adding, downloading and removing tracks. | Abstractions, Extraction |
-| `MusicPlayer.Playback` | Queue and transport rules. | Abstractions |
-| `MusicPlayer.Ui` | Razor pages and components. | Library, Playback |
-| `MusicPlayer.App` | MAUI host, Android audio and service. | all of the above |
+| `LinkAudioPlayer.Domain` | Entities and the cache key rule. | nothing |
+| `LinkAudioPlayer.Abstractions` | Interfaces and value types. The seams. | Domain |
+| `LinkAudioPlayer.Extraction` | Source policy, resolvers, downloaders. | Abstractions |
+| `LinkAudioPlayer.Data` | EF Core, SQLite, stores. | Abstractions |
+| `LinkAudioPlayer.Storage` | On device media cache and download dispatch. | Abstractions |
+| `LinkAudioPlayer.Library` | Adding, downloading and removing tracks. | Abstractions, Extraction |
+| `LinkAudioPlayer.Playback` | Queue and transport rules. | Abstractions |
+| `LinkAudioPlayer.Diagnostics` | In memory log buffer and global exception hooks. | nothing |
+| `LinkAudioPlayer.Ui` | Razor pages and components. | Library, Playback |
+| `LinkAudioPlayer.App` | MAUI host, Android audio and service. | all of the above |
 
 Domain, Abstractions and Playback know nothing about Android, the filesystem or
 any network. That is what makes the queue rules testable without a device.
@@ -99,6 +100,25 @@ context matches how the app actually behaves.
 
 **`PlayerController` is a singleton.** The queue and the audio session have to
 survive navigation between pages.
+
+**Every MediaPlayer and MediaSession call runs on the Android main thread.** Those
+types need a Looper, and constructing one on a thread pool thread throws
+Java.Lang.RuntimeException. Playback is started from a continuation after a
+download, which is a pool thread, so `AndroidAudioPlayer` marshals through
+`MainThread` everywhere.
+
+**Android insets are applied as padding on the content view**, not through CSS
+`env(safe-area-inset)`. Android 15 forces edge to edge, and the web view does not
+reliably report the insets, so `MainActivity` reads them and pads instead.
+
+**Nothing throws out of a UI handler.** An escaped exception tears down the Blazor
+renderer, and every button in the app stops responding until it is force closed.
+Handlers route through `UiErrorState.TryAsync`, and `MainLayout` wraps the body in
+an `ErrorBoundary` as a second line.
+
+**Reordering uses pointer events, not HTML5 drag and drop**, which never fires for
+touch in an Android web view. `reorder.js` shifts rows visually and reports the
+final move; it never mutates the DOM, because Blazor owns that.
 
 ## Not built
 

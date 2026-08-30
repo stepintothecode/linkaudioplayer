@@ -1,6 +1,6 @@
-using MusicPlayer.Abstractions;
+using LinkAudioPlayer.Abstractions;
 
-namespace MusicPlayer.TestSupport;
+namespace LinkAudioPlayer.TestSupport;
 
 // Stands in for the Android player. Records what it was asked to load and lets a
 // test raise the platform events by hand.

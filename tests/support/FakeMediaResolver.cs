@@ -1,6 +1,6 @@
-using MusicPlayer.Abstractions;
+using LinkAudioPlayer.Abstractions;
 
-namespace MusicPlayer.TestSupport;
+namespace LinkAudioPlayer.TestSupport;
 
 // Records what it was asked to resolve so tests can assert on dispatch order.
 public sealed class FakeMediaResolver : IMediaResolver

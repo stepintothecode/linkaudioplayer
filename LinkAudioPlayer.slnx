@@ -1,0 +1,24 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LinkAudioPlayer.Abstractions/LinkAudioPlayer.Abstractions.csproj" />
+    <Project Path="src/LinkAudioPlayer.App/LinkAudioPlayer.App.csproj" />
+    <Project Path="src/LinkAudioPlayer.Data/LinkAudioPlayer.Data.csproj" />
+    <Project Path="src/LinkAudioPlayer.Diagnostics/LinkAudioPlayer.Diagnostics.csproj" />
+    <Project Path="src/LinkAudioPlayer.Domain/LinkAudioPlayer.Domain.csproj" />
+    <Project Path="src/LinkAudioPlayer.Extraction/LinkAudioPlayer.Extraction.csproj" />
+    <Project Path="src/LinkAudioPlayer.Library/LinkAudioPlayer.Library.csproj" />
+    <Project Path="src/LinkAudioPlayer.Playback/LinkAudioPlayer.Playback.csproj" />
+    <Project Path="src/LinkAudioPlayer.Storage/LinkAudioPlayer.Storage.csproj" />
+    <Project Path="src/LinkAudioPlayer.Ui/LinkAudioPlayer.Ui.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LinkAudioPlayer.Data.Tests/LinkAudioPlayer.Data.Tests.csproj" />
+    <Project Path="tests/LinkAudioPlayer.Diagnostics.Tests/LinkAudioPlayer.Diagnostics.Tests.csproj" />
+    <Project Path="tests/LinkAudioPlayer.Extraction.Tests/LinkAudioPlayer.Extraction.Tests.csproj" />
+    <Project Path="tests/LinkAudioPlayer.Playback.Tests/LinkAudioPlayer.Playback.Tests.csproj" />
+    <Project Path="tests/LinkAudioPlayer.Ui.Tests/LinkAudioPlayer.Ui.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/support/">
+    <Project Path="tests/support/LinkAudioPlayer.TestSupport.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,548 @@
+:root {
+  --bg: #101014;
+  --surface: #17171d;
+  --surface-hover: #1f1f27;
+  --border: #2a2a33;
+  --text: #e8e8ee;
+  --muted: #8b8b99;
+  --accent: #6c8cff;
+  --danger: #ff6b6b;
+  --warn: #ffc46b;
+  --radius: 10px;
+
+  /* MainActivity pads the hosting view by the real window insets, so these stay
+     zero on Android. They exist so the same CSS still breathes correctly if the
+     UI is ever hosted somewhere that does not pad for us. */
+  --safe-top: 0px;
+  --safe-bottom: 0px;
+  --safe-left: 0px;
+  --safe-right: 0px;
+
+  --header-height: 3.25rem;
+  --player-height: 5.25rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.boot {
+  padding: 2rem;
+  color: var(--muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Header sits below the status bar rather than under it. */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: calc(var(--safe-top) + 0.6rem) calc(var(--safe-right) + 1rem) 0.6rem
+    calc(var(--safe-left) + 1rem);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.app-header nav {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.app-header nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.app-header nav a.active {
+  color: var(--text);
+  background: var(--surface);
+}
+
+/* Content clears the fixed player, the nav bar and the side cutouts. */
+main {
+  padding: 1rem calc(var(--safe-right) + 1rem)
+    calc(var(--player-height) + var(--safe-bottom) + 1rem) calc(var(--safe-left) + 1rem);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 1.15rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 0 0 0.6rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.row.wrap {
+  flex-wrap: wrap;
+}
+
+input[type="text"],
+input[type="url"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.7rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+button {
+  padding: 0.6rem 0.9rem;
+  min-height: 42px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+button:active:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+button:disabled {
+  opacity: 0.4;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b0b10;
+  font-weight: 600;
+}
+
+button.icon {
+  padding: 0.4rem 0.55rem;
+  min-width: 42px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+button.icon.on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.65rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.item.playing {
+  border-color: var(--accent);
+}
+
+.item .art {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--surface-hover);
+  flex-shrink: 0;
+}
+
+.item .meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.item .title {
+  display: block;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+}
+
+.item .sub {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: var(--surface-hover);
+  color: var(--muted);
+}
+
+.badge.cached {
+  color: var(--accent);
+}
+
+/* Six dot drag handle. */
+.grip {
+  display: grid;
+  grid-template-columns: repeat(2, 4px);
+  gap: 3px;
+  padding: 0.5rem 0.35rem;
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.grip span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.list.reorderable .item {
+  transition: transform 0.16s ease;
+  will-change: transform;
+}
+
+.list.reordering .item {
+  user-select: none;
+}
+
+.item.dragging {
+  transition: none;
+  z-index: 2;
+  position: relative;
+  border-color: var(--accent);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 45%);
+}
+
+.empty {
+  color: var(--muted);
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--danger);
+  background: rgb(255 107 107 / 10%);
+  border: 1px solid rgb(255 107 107 / 30%);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.75rem;
+  margin: 0.75rem 0;
+  font-size: 0.88rem;
+}
+
+.error .text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.error .logs-link {
+  color: var(--text);
+  background: rgb(255 107 107 / 20%);
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.error .dismiss {
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0.2rem 0.45rem;
+  background: transparent;
+  border-color: transparent;
+  color: var(--danger);
+}
+
+/* Player, clear of the navigation bar. */
+.player {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
+}
+
+.player .inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem calc(var(--safe-right) + 0.75rem) 0.6rem calc(var(--safe-left) + 0.75rem);
+}
+
+.player .track {
+  flex: 1;
+  min-width: 0;
+}
+
+.player .time {
+  display: block;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* Edge to edge scrubber. The fill transitions so it glides between updates. */
+.scrubber {
+  position: relative;
+  height: 22px;
+  display: flex;
+  align-items: center;
+}
+
+.scrubber::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--border);
+}
+
+.scrub-fill {
+  position: absolute;
+  left: 0;
+  height: 4px;
+  width: var(--progress, 0%);
+  background: var(--accent);
+  transition: width 0.28s linear;
+  pointer-events: none;
+}
+
+.scrubber.preparing .scrub-fill {
+  background: var(--warn);
+}
+
+.scrubber input[type="range"] {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  height: 22px;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.scrubber input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+}
+
+.scrubber input[type="range"]::-webkit-slider-runnable-track {
+  height: 22px;
+  background: transparent;
+}
+
+/* Logs */
+.logs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.log {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.65rem;
+}
+
+.log.err {
+  border-left-color: var(--danger);
+}
+
+.log.warn {
+  border-left-color: var(--warn);
+}
+
+.log.dim {
+  opacity: 0.65;
+}
+
+.log-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.log-level {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.log.err .log-level {
+  color: var(--danger);
+}
+
+.log.warn .log-level {
+  color: var(--warn);
+}
+
+.log-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.log-cat {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-flag {
+  color: var(--accent);
+}
+
+.log-message {
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+  word-break: break-word;
+}
+
+.log-stack {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem;
+  background: #0b0b10;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Fallback shown when Blazor itself fails. Kept clear of the nav bar. */
+#blazor-error-ui {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 0.85rem calc(var(--safe-right) + 1rem)
+    calc(var(--safe-bottom) + 0.85rem) calc(var(--safe-left) + 1rem);
+  background: var(--danger);
+  color: #fff;
+  gap: 0.75rem;
+}
+
+#blazor-error-ui a {
+  color: #fff;
+  background: rgb(0 0 0 / 25%);
+  padding: 0.45rem 0.7rem;
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+}

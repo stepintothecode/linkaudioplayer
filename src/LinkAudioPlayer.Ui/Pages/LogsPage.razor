@@ -1,0 +1,113 @@
+@page "/logs"
+@implements IDisposable
+@inject InMemoryLogStore Store
+@inject IJSRuntime Js
+
+<h1>Logs</h1>
+
+<div class="row wrap">
+    <label class="check">
+        <input type="checkbox" @bind="_errorsOnly" @bind:after="StateHasChanged" />
+        Problems only
+    </label>
+    <button @onclick="CopyAsync">@(_copied ? "Copied" : "Copy all")</button>
+    <button @onclick="Refresh">Refresh</button>
+    <button @onclick="Store.Clear">Clear</button>
+</div>
+
+<p class="hint">
+    Newest first. Tap an entry to expand its stack trace. The buffer keeps the last
+    500 lines and survives an error, so it is still here after something breaks.
+</p>
+
+@if (Visible.Count == 0)
+{
+    <p class="empty">Nothing logged yet.</p>
+}
+else
+{
+    <ul class="logs">
+        @foreach (var entry in Visible)
+        {
+            <li class="log @LevelClass(entry.Level)">
+                <button class="log-head" @onclick="() => Toggle(entry)">
+                    <span class="log-level">@entry.Level.ToString().ToUpperInvariant()</span>
+                    <span class="log-time">@entry.Timestamp.ToString("HH:mm:ss.fff")</span>
+                    <span class="log-cat">@entry.ShortCategory</span>
+                    @if (entry.Exception is not null)
+                    {
+                        <span class="log-flag">stack</span>
+                    }
+                </button>
+                <div class="log-message">@entry.Message</div>
+                @if (_expanded.Contains(entry) && entry.Exception is not null)
+                {
+                    <pre class="log-stack">@entry.Exception</pre>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private readonly HashSet<LogEntry> _expanded = [];
+    private IReadOnlyList<LogEntry> _entries = [];
+    private bool _errorsOnly;
+    private bool _copied;
+
+    /// <summary>Entries after the level filter.</summary>
+    private List<LogEntry> Visible =>
+        [.. _errorsOnly ? _entries.Where(e => e.Level >= LogLevel.Warning) : _entries];
+
+    /// <summary>Loads the buffer and follows new entries.</summary>
+    protected override void OnInitialized()
+    {
+        Refresh();
+        Store.Changed += OnChanged;
+    }
+
+    /// <summary>Unsubscribes to avoid leaking the handler.</summary>
+    public void Dispose() => Store.Changed -= OnChanged;
+
+    /// <summary>Re-reads the buffer.</summary>
+    private void Refresh() => _entries = Store.Snapshot();
+
+    /// <summary>Shows or hides one stack trace.</summary>
+    private void Toggle(LogEntry entry)
+    {
+        if (!_expanded.Remove(entry))
+        {
+            _expanded.Add(entry);
+        }
+    }
+
+    /// <summary>Copies the whole buffer to the clipboard.</summary>
+    private async Task CopyAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", Store.ToPlainText());
+            _copied = true;
+        }
+        catch (JSException)
+        {
+            // Clipboard is unavailable in some web views. The text is still on screen.
+            _copied = false;
+        }
+    }
+
+    /// <summary>Maps a level to a CSS class.</summary>
+    private static string LevelClass(LogLevel level) => level switch
+    {
+        LogLevel.Critical or LogLevel.Error => "err",
+        LogLevel.Warning => "warn",
+        LogLevel.Debug or LogLevel.Trace => "dim",
+        _ => "info",
+    };
+
+    private void OnChanged() => InvokeAsync(() =>
+    {
+        Refresh();
+        StateHasChanged();
+    });
+}
