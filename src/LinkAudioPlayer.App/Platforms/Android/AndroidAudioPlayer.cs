@@ -126,7 +126,8 @@ public sealed class AndroidAudioPlayer : Java.Lang.Object, IAudioPlayer
             OnPlaybackChanged();
         });
 
-        _ = LoadArtworkAsync(metadata);
+        // Also off the main thread. It is reached from a continuation that resumes there.
+        _ = Task.Run(() => LoadArtworkAsync(metadata));
     }
 
     /// <inheritdoc />

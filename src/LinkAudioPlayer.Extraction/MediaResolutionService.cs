@@ -46,6 +46,9 @@ public sealed class MediaResolutionService
             ?? throw new MediaResolutionException($"No resolver handles '{uri}'.");
 
         _logger.LogDebug("Resolving {Url} with {Resolver}", uri, resolver.Name);
-        return await resolver.ResolveAsync(uri, cancellationToken);
+
+        // Off the caller's thread for the same reason as the downloader: a Blazor event
+        // handler runs on the Android main thread, and network work there is fatal.
+        return await Task.Run(() => resolver.ResolveAsync(uri, cancellationToken), cancellationToken);
     }
 }

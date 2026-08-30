@@ -32,11 +32,18 @@ public sealed class MediaDownloadService
             ?? throw new MediaResolutionException($"No downloader handles '{source}'.");
 
         _logger.LogDebug("Downloading {Url} with {Downloader}", source, downloader.Name);
-        return await downloader.DownloadAsync(
-            source,
-            destinationDirectory,
-            fileNameStem,
-            progress,
+
+        // Task.Run is load bearing. The caller is a Blazor event handler, which runs on
+        // the Android main thread, so every await here would resume there. Android then
+        // throws NetworkOnMainThreadException the moment an HTTP response is disposed,
+        // because closing the socket drains it with a blocking read.
+        return await Task.Run(
+            () => downloader.DownloadAsync(
+                source,
+                destinationDirectory,
+                fileNameStem,
+                progress,
+                cancellationToken),
             cancellationToken);
     }
 }

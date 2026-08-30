@@ -116,6 +116,18 @@ renderer, and every button in the app stops responding until it is force closed.
 Handlers route through `UiErrorState.TryAsync`, and `MainLayout` wraps the body in
 an `ErrorBoundary` as a second line.
 
+**Network work is pushed off the caller's thread with `Task.Run`.** A Blazor event
+handler runs on the renderer's dispatcher, which on Android is the main thread, so
+every await inside a click handler resumes there. Android's StrictMode then throws
+`NetworkOnMainThreadException` when an HTTP response is disposed, because closing
+the socket drains it with a blocking read. `MediaResolutionService` and
+`MediaDownloadService` both hop to the pool, and tests assert they leave the
+caller's synchronization context.
+
+Note the two directions: audio has to be marshalled **onto** the main thread for
+`MediaPlayer`, and network has to be pushed **off** it. Getting one right does not
+give you the other.
+
 **Playback failures are logged, not just stored.** `PlayerController` catches into an
 `Error` property. When nothing logged or rendered that property, a failed play was
 completely silent: no sound, no message, no log line. It now logs with the stack

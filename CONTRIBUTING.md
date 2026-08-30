@@ -93,6 +93,22 @@ await Errors.TryAsync("Adding the link", async () =>
 `MainLayout` also wraps the page body in an `ErrorBoundary`, but that is a safety
 net rather than the plan.
 
+## Threading
+
+Two rules, pulling opposite ways:
+
+- **Anything touching `MediaPlayer` or `MediaSession` must run on the Android main
+  thread.** Those types need a Looper. `AndroidAudioPlayer` marshals with
+  `MainThread` for you.
+- **Anything doing network or long IO must run off it.** A Blazor event handler
+  runs on the main thread, and Android throws `NetworkOnMainThreadException` when
+  an HTTP response is disposed there. `MediaResolutionService` and
+  `MediaDownloadService` hop to the pool with `Task.Run`.
+
+If you add another network boundary, hop off the caller's thread and add a test
+asserting `SynchronizationContext.Current` is null inside the work. See
+`MediaDownloadServiceTests`.
+
 ## Adding a source
 
 Implement `IMediaResolver` and `IMediaDownloader`, register both in

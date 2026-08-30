@@ -16,6 +16,7 @@
     <Project Path="tests/LinkAudioPlayer.Diagnostics.Tests/LinkAudioPlayer.Diagnostics.Tests.csproj" />
     <Project Path="tests/LinkAudioPlayer.Extraction.Tests/LinkAudioPlayer.Extraction.Tests.csproj" />
     <Project Path="tests/LinkAudioPlayer.Playback.Tests/LinkAudioPlayer.Playback.Tests.csproj" />
+    <Project Path="tests/LinkAudioPlayer.Storage.Tests/LinkAudioPlayer.Storage.Tests.csproj" />
     <Project Path="tests/LinkAudioPlayer.Ui.Tests/LinkAudioPlayer.Ui.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/support/">
