@@ -42,7 +42,6 @@
   <ItemGroup>
     <MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#101014" />
     <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#101014" BaseSize="128,128" />
-    <MauiAsset Include="wwwroot\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

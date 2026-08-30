@@ -25,7 +25,7 @@ src/MusicPlayer.App/bin/Debug/net10.0-android/com.kartikeyan.musicplayer-Signed.
 ```
 
 Around 17 MB. It is signed with the local debug key, which is enough to install
-and use. Use the Release build below if you want it smaller and faster.
+and use. The Release build below runs faster but is a larger download.
 
 ## Put it on the phone
 
@@ -52,11 +52,19 @@ notification stays until you press stop.
 
 ## Release build
 
-Release trims and ahead of time compiles, giving a smaller and faster app. It
-takes considerably longer to build.
+Release trims and ahead of time compiles, so the app starts and runs faster. It
+takes considerably longer to build, and the APK is larger, around 40 MB, because
+it carries precompiled native code for every supported CPU.
 
 ```bash
 dotnet publish src/MusicPlayer.App -f net10.0-android -c Release
+```
+
+To build for one phone only, name its architecture. Almost every phone since
+2019 is `android-arm64`, and this roughly halves the size:
+
+```bash
+dotnet publish src/MusicPlayer.App -f net10.0-android -c Release -r android-arm64
 ```
 
 By default this is signed with the debug key too. To sign with your own key,
