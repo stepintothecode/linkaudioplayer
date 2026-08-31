@@ -1,16 +1,22 @@
 """Draws the LinkAudioPlayer mark and writes it at every size the project needs.
 
-The mark is a beamed pair of notes over a link chain, on the app's dark ground.
-Everything is drawn at 4x and downsampled, which is what keeps the curves clean.
+The mark is a chain link whose right half opens into a rising equaliser, which is the
+whole app in one shape: a link turning into sound. Everything is drawn at 4x and
+downsampled, which is what keeps the curves clean without an SVG rasteriser.
 """
 
 import os
 import sys
 from PIL import Image, ImageDraw
 
-BG = (16, 16, 20, 255)
-FG = (108, 140, 255, 255)
-SS = 4  # supersample factor
+BG = (13, 11, 18, 255)
+FG = (192, 132, 252, 255)      # accent-soft
+FG_DEEP = (124, 58, 237, 255)  # accent-deep
+SS = 4                          # supersample factor
+
+
+def _lerp(a, b, t):
+    return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
 
 
 def draw_mark(size, transparent=False, inset=0.0):
@@ -19,36 +25,42 @@ def draw_mark(size, transparent=False, inset=0.0):
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0) if transparent else BG)
     d = ImageDraw.Draw(img)
 
-    # Work in a 0..1 space, then scale, so the geometry reads the same at every size.
     pad = inset
     span = 1.0 - 2 * pad
 
-    def px(x, y):
-        return (int((pad + x * span) * s), int((pad + y * span) * s))
+    def x(v):
+        return (pad + v * span) * s
 
-    def rect(x0, y0, x1, y1, r=None):
-        a, b = px(x0, y0), px(x1, y1)
-        if r:
-            d.rounded_rectangle([a, b], radius=int(r * span * s), fill=FG)
-        else:
-            d.rectangle([a, b], fill=FG)
+    def box(x0, y0, x1, y1):
+        return [x(x0), x(y0), x(x1), x(y1)]
 
-    def ellipse(cx, cy, rx, ry):
-        d.ellipse([px(cx - rx, cy - ry), px(cx + rx, cy + ry)], fill=FG)
+    stroke = max(2, round(0.08 * span * s))
 
-    # Beam joining the two stems.
-    d.polygon(
-        [px(0.34, 0.22), px(0.76, 0.14), px(0.76, 0.28), px(0.34, 0.36)],
-        fill=FG,
+    # A closed chain link on the left, kept clear of the bars so both read at 48px.
+    d.rounded_rectangle(
+        box(0.07, 0.335, 0.45, 0.665),
+        radius=(0.165 * span * s),
+        outline=FG,
+        width=stroke,
     )
 
-    # Stems.
-    rect(0.34, 0.22, 0.395, 0.72)
-    rect(0.705, 0.14, 0.76, 0.60)
+    # Rising then falling equaliser bars, tinted across the accent ramp.
+    bars = [
+        (0.545, 0.26),
+        (0.675, 0.52),
+        (0.805, 0.74),
+        (0.935, 0.40),
+    ]
 
-    # Note heads, tilted the way engraved notes are.
-    ellipse(0.275, 0.725, 0.105, 0.082)
-    ellipse(0.645, 0.605, 0.105, 0.082)
+    for index, (centre, height) in enumerate(bars):
+        half = 0.038
+        top = 0.5 - height / 2
+        colour = _lerp(FG, FG_DEEP, index / max(len(bars) - 1, 1))
+        d.rounded_rectangle(
+            box(centre - half, top, centre + half, top + height),
+            radius=half * span * s,
+            fill=colour,
+        )
 
     if SS > 1:
         img = img.resize((size, size), Image.LANCZOS)
@@ -91,7 +103,7 @@ def main(out_dir):
     # Transparent foreground, inset for the Android adaptive icon safe zone.
     for size in (432, 1024):
         path = os.path.join(out_dir, f"icon-foreground-{size}.png")
-        draw_mark(size, transparent=True, inset=0.22).save(path)
+        draw_mark(size, transparent=True, inset=0.24).save(path)
         written.append(path)
 
     # Multi resolution ICO for Windows and favicons.

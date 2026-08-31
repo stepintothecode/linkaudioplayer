@@ -37,13 +37,35 @@ public sealed class TrackLibraryService
     }
 
     /// <summary>
-    /// Resolves a URL and stores the resulting track.
-    /// Returns the existing track when the URL is already in the library.
+    /// Resolves a URL and stores every track it names.
+    /// One link can be a single video or a whole playlist. Tracks already in the
+    /// library are returned as they are rather than duplicated.
     /// </summary>
-    public async Task<LibraryTrack> AddFromUrlAsync(string url, CancellationToken cancellationToken)
+    /// <param name="url">Source URL supplied by the user.</param>
+    /// <param name="cancellationToken">Cancels resolution.</param>
+    public async Task<IReadOnlyList<LibraryTrack>> AddFromUrlAsync(
+        string url,
+        CancellationToken cancellationToken)
     {
-        var resolution = await _resolution.ResolveAsync(url, cancellationToken);
+        var resolutions = await _resolution.ResolveAsync(url, cancellationToken);
+        var added = new List<LibraryTrack>(resolutions.Count);
 
+        // Oldest first, so the newest ends up at the top of the library.
+        foreach (var resolution in resolutions.Reverse())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            added.Add(await AddOneAsync(resolution, cancellationToken));
+        }
+
+        added.Reverse();
+        return added;
+    }
+
+    /// <summary>Stores one resolved track, or returns the existing entry for that URL.</summary>
+    private async Task<LibraryTrack> AddOneAsync(
+        MediaResolution resolution,
+        CancellationToken cancellationToken)
+    {
         var existing = await _tracks.FindBySourceUrlAsync(resolution.SourceUrl, cancellationToken);
         if (existing is not null)
         {

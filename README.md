@@ -20,7 +20,9 @@ Full steps, including the Release build, are in [docs/install.md](docs/install.m
 
 ## Sources
 
-YouTube links, and direct links to media files such as a podcast mp3.
+YouTube video links, YouTube playlist links, and direct links to media files such
+as a podcast mp3. Mix links are refused, because YouTube builds those per viewer
+rather than publishing them.
 
 DRM protected services like Spotify and Apple Music are refused by design. See
 [docs/legal-boundaries.md](docs/legal-boundaries.md) for why, and read it before
@@ -41,6 +43,7 @@ error that produced it, and has a copy button. Start there.
 
 ## Logo
 
+The mark is a chain link followed by an equaliser, which is the app in one shape.
 Source images live in [assets/logo/](assets/logo/): square PNGs from 16 to 1024,
 rounded variants, a transparent foreground for the Android adaptive icon, and a
 multi resolution `icon.ico`. Regenerate them with

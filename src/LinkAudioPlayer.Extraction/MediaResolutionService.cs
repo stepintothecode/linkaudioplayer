@@ -25,10 +25,13 @@ public sealed class MediaResolutionService
         _logger = logger;
     }
 
-    /// <summary>Resolves a URL, throwing <see cref="MediaResolutionException"/> when refused or unsupported.</summary>
+    /// <summary>
+    /// Resolves a URL into one or more tracks, throwing
+    /// <see cref="MediaResolutionException"/> when refused or unsupported.
+    /// </summary>
     /// <param name="url">Raw URL as entered by the user.</param>
     /// <param name="cancellationToken">Cancels the resolution.</param>
-    public async Task<MediaResolution> ResolveAsync(string url, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<MediaResolution>> ResolveAsync(string url, CancellationToken cancellationToken)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
         {
@@ -49,6 +52,13 @@ public sealed class MediaResolutionService
 
         // Off the caller's thread for the same reason as the downloader: a Blazor event
         // handler runs on the Android main thread, and network work there is fatal.
-        return await Task.Run(() => resolver.ResolveAsync(uri, cancellationToken), cancellationToken);
+        var resolved = await Task.Run(() => resolver.ResolveAsync(uri, cancellationToken), cancellationToken);
+
+        if (resolved.Count == 0)
+        {
+            throw new MediaResolutionException($"'{uri}' contained nothing playable.");
+        }
+
+        return resolved;
     }
 }

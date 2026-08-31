@@ -14,6 +14,9 @@ public sealed class PlayerController : IAsyncDisposable
     private readonly IMediaCache _cache;
     private readonly ILogger<PlayerController> _logger;
     private readonly List<Track> _queue = [];
+    private readonly List<int> _order = [];
+    private readonly Random _random = new();
+    private int _orderIndex = -1;
     private CancellationTokenSource? _loadCancellation;
 
     /// <summary>Creates the controller over the platform player and the media cache.</summary>
@@ -37,8 +40,12 @@ public sealed class PlayerController : IAsyncDisposable
     /// <summary>Tracks queued for playback, in order.</summary>
     public IReadOnlyList<Track> Queue => _queue;
 
-    /// <summary>Index of the loaded track, or -1 when the queue is empty.</summary>
-    public int CurrentIndex { get; private set; } = -1;
+    /// <summary>Index into <see cref="Queue"/> of the loaded track, or -1 when empty.</summary>
+    public int CurrentIndex =>
+        _orderIndex >= 0 && _orderIndex < _order.Count ? _order[_orderIndex] : -1;
+
+    /// <summary>True when the queue plays in a shuffled order.</summary>
+    public bool IsShuffled { get; private set; }
 
     /// <summary>Track currently loaded, or null.</summary>
     public Track? Current => CurrentIndex >= 0 && CurrentIndex < _queue.Count ? _queue[CurrentIndex] : null;
@@ -74,9 +81,34 @@ public sealed class PlayerController : IAsyncDisposable
 
         _queue.Clear();
         _queue.AddRange(tracks);
-        CurrentIndex = _queue.Count == 0 ? -1 : Math.Clamp(startIndex, 0, _queue.Count - 1);
 
+        if (_queue.Count == 0)
+        {
+            _order.Clear();
+            _orderIndex = -1;
+            StateChanged?.Invoke();
+            return;
+        }
+
+        BuildOrder(Math.Clamp(startIndex, 0, _queue.Count - 1));
         await LoadCurrentAsync();
+    }
+
+    /// <summary>
+    /// Turns shuffle on or off, keeping the current track playing either way.
+    /// Turning it on shuffles what is left; turning it off restores the queue order
+    /// and resumes from wherever the current track sits in it.
+    /// </summary>
+    public void ToggleShuffle()
+    {
+        IsShuffled = !IsShuffled;
+
+        if (_queue.Count > 0)
+        {
+            BuildOrder(CurrentIndex < 0 ? 0 : CurrentIndex);
+        }
+
+        StateChanged?.Invoke();
     }
 
     /// <summary>Cycles the repeat mode between off, all and one.</summary>
@@ -119,7 +151,7 @@ public sealed class PlayerController : IAsyncDisposable
             return;
         }
 
-        CurrentIndex = next.Value;
+        _orderIndex = next.Value;
         await LoadCurrentAsync();
     }
 
@@ -134,13 +166,13 @@ public sealed class PlayerController : IAsyncDisposable
             return;
         }
 
-        if (Position > TimeSpan.FromSeconds(3) || CurrentIndex == 0)
+        if (Position > TimeSpan.FromSeconds(3) || _orderIndex == 0)
         {
             await SeekAsync(TimeSpan.Zero);
             return;
         }
 
-        CurrentIndex--;
+        _orderIndex--;
         await LoadCurrentAsync();
     }
 
@@ -160,7 +192,8 @@ public sealed class PlayerController : IAsyncDisposable
         await _player.StopAsync();
 
         _queue.Clear();
-        CurrentIndex = -1;
+        _order.Clear();
+        _orderIndex = -1;
         IsPlaying = false;
         IsPreparing = false;
         Position = TimeSpan.Zero;
@@ -187,23 +220,56 @@ public sealed class PlayerController : IAsyncDisposable
     /// </summary>
     private int? NextIndex(bool manual)
     {
-        if (CurrentIndex < 0 || _queue.Count == 0)
+        if (_orderIndex < 0 || _order.Count == 0)
         {
             return null;
         }
 
         if (!manual && Repeat == RepeatMode.One)
         {
-            return CurrentIndex;
+            return _orderIndex;
         }
 
-        if (CurrentIndex + 1 < _queue.Count)
+        if (_orderIndex + 1 < _order.Count)
         {
-            return CurrentIndex + 1;
+            return _orderIndex + 1;
         }
 
-        // At the end of the queue. Wrap only when repeating everything.
+        // At the end of the order. Wrap only when repeating everything.
         return Repeat == RepeatMode.All ? 0 : null;
+    }
+
+    /// <summary>
+    /// Rebuilds the play order, placing the given queue index first.
+    /// Shuffled means the rest are randomised behind it, so toggling shuffle never
+    /// interrupts what is playing.
+    /// </summary>
+    private void BuildOrder(int currentQueueIndex)
+    {
+        _order.Clear();
+        _order.AddRange(Enumerable.Range(0, _queue.Count));
+
+        if (IsShuffled)
+        {
+            _order.Remove(currentQueueIndex);
+            Shuffle(_order);
+            _order.Insert(0, currentQueueIndex);
+            _orderIndex = 0;
+        }
+        else
+        {
+            _orderIndex = currentQueueIndex;
+        }
+    }
+
+    /// <summary>Fisher Yates, so every ordering is equally likely.</summary>
+    private void Shuffle(List<int> values)
+    {
+        for (var i = values.Count - 1; i > 0; i--)
+        {
+            var j = _random.Next(i + 1);
+            (values[i], values[j]) = (values[j], values[i]);
+        }
     }
 
     /// <summary>Downloads the current track if needed, then hands it to the platform player.</summary>
@@ -328,7 +394,7 @@ public sealed class PlayerController : IAsyncDisposable
             return;
         }
 
-        CurrentIndex = next.Value;
+        _orderIndex = next.Value;
         await LoadCurrentAsync();
     }
 

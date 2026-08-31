@@ -101,6 +101,18 @@ context matches how the app actually behaves.
 **`PlayerController` is a singleton.** The queue and the audio session have to
 survive navigation between pages.
 
+**Shuffle is a separate play order, not a shuffled queue.** `_queue` keeps the order
+tracks were given and `_order` holds indices in play order. Toggling shuffle never
+interrupts what is playing, and turning it off restores the original sequence from
+wherever the current track sits in it.
+
+**A resolver returns a list, not one track.** One link can name a whole playlist, so
+`IMediaResolver` yields `IReadOnlyList<MediaResolution>` and `YoutubePlaylistResolver`
+expands a listing in a single request rather than one per video. A link carrying both
+a video and a list is treated as the video, because that is what sharing one song from
+inside a playlist produces. A `list=RD...` mix is refused with an explanation: YouTube
+generates those per viewer, so they are not real playlists and cannot be listed.
+
 **Every MediaPlayer and MediaSession call runs on the Android main thread.** Those
 types need a Looper, and constructing one on a thread pool thread throws
 Java.Lang.RuntimeException. Playback is started from a continuation after a
@@ -156,8 +168,7 @@ final move; it never mutates the DOM, because Blazor owns that.
 
 ## Not built
 
-- Shuffle. Repeat is there; shuffle is not.
 - Proper EF migrations. The patch step in `DatabaseInitializer` covers the one
   column added so far; a third or fourth would justify migrations instead.
-- Importing a whole YouTube playlist in one paste.
+- YouTube mixes. They are per viewer and not listable, so they are refused.
 - Search. Links are pasted, by design, per the legal boundaries.

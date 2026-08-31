@@ -295,4 +295,65 @@ public sealed class PlayerControllerTests : IAsyncDisposable
             await Task.Delay(10, TestContext.Current.CancellationToken);
         }
     }
+
+    [Fact]
+    public async Task Shuffle_keeps_the_current_track_playing()
+    {
+        await _controller.PlayQueueAsync(Tracks(6), startIndex: 3);
+        var before = _controller.Current;
+
+        _controller.ToggleShuffle();
+
+        Assert.True(_controller.IsShuffled);
+        Assert.Same(before, _controller.Current);
+    }
+
+    [Fact]
+    public async Task Shuffle_visits_every_track_exactly_once()
+    {
+        await _controller.PlayQueueAsync(Tracks(8));
+        _controller.ToggleShuffle();
+
+        var seen = new List<Guid> { _controller.Current!.Id };
+        for (var i = 0; i < 7; i++)
+        {
+            await _controller.NextAsync();
+            seen.Add(_controller.Current!.Id);
+        }
+
+        Assert.Equal(8, seen.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task Turning_shuffle_off_restores_the_queue_order()
+    {
+        await _controller.PlayQueueAsync(Tracks(5), startIndex: 2);
+        _controller.ToggleShuffle();
+        _controller.ToggleShuffle();
+
+        Assert.False(_controller.IsShuffled);
+        Assert.Equal(2, _controller.CurrentIndex);
+
+        await _controller.NextAsync();
+        Assert.Equal(3, _controller.CurrentIndex);
+    }
+
+    [Fact]
+    public async Task Shuffle_before_anything_is_queued_is_harmless()
+    {
+        _controller.ToggleShuffle();
+        await _controller.PlayQueueAsync(Tracks(3));
+
+        Assert.True(_controller.IsShuffled);
+        Assert.NotNull(_controller.Current);
+    }
+
+    private static List<Track> Tracks(int count) =>
+        [.. Enumerable.Range(0, count).Select(i => new Track
+        {
+            SourceUrl = $"https://example.com/{i}",
+            Provider = "test",
+            Title = $"track {i}",
+            CacheKey = $"key{i}",
+        })];
 }

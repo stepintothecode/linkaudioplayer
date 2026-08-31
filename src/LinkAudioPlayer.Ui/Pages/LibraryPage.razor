@@ -3,6 +3,7 @@
 @inject TrackLibraryService LibraryService
 @inject PlayerController Player
 @inject UiErrorState Errors
+@inject ToastService Toasts
 @inject IJSRuntime Js
 
 <h1 class="visually-hidden">Library</h1>
@@ -10,7 +11,7 @@
 <div class="row">
     <input type="url"
            inputmode="url"
-           placeholder="Paste a YouTube link"
+           placeholder="Paste a YouTube video or playlist link"
            @bind="_url"
            @bind:event="oninput"
            @onkeydown="OnKeyDown" />
@@ -130,14 +131,16 @@ else
 
         _busy = true;
         var url = _url.Trim();
+        var count = 0;
 
-        var added = await Errors.TryAsync(
+        var ok = await Errors.TryAsync(
             "Adding the link",
-            async () => await LibraryService.AddFromUrlAsync(url, CancellationToken.None));
+            async () => count = (await LibraryService.AddFromUrlAsync(url, CancellationToken.None)).Count);
 
-        if (added)
+        if (ok)
         {
             _url = string.Empty;
+            Toasts.Show(count == 1 ? "Added 1 track" : $"Added {count} tracks", "➕");
         }
 
         _busy = false;

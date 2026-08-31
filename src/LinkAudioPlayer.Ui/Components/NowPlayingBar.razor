@@ -1,5 +1,7 @@
-@implements IDisposable
+@implements IAsyncDisposable
 @inject PlayerController Player
+@inject ToastService Toasts
+@inject IJSRuntime Js
 
 @* Mirrors what the Android lock screen shows. *@
 @if (Player.Current is { } track)
@@ -27,32 +29,44 @@
             </div>
         }
 
-        <div class="inner">
-            <div class="track">
-                <span class="title">@track.Title</span>
-                <span class="time">
-                    @if (Player.IsPreparing)
-                    {
-                        @($"Downloading {Player.PrepareProgress:P0}")
-                    }
-                    else
-                    {
-                        @($"{Format(Player.Position)} / {Format(Player.Duration)}")
-                    }
-                </span>
+        <div class="now">
+            <div class="marquee" @ref="_titleElement">
+                <span class="marquee-text">@track.Title</span>
             </div>
+            <span class="time">
+                @if (Player.IsPreparing)
+                {
+                    @($"Downloading {Player.PrepareProgress:P0}")
+                }
+                else
+                {
+                    @($"{Format(Player.Position)} / {Format(Player.Duration)}")
+                }
+            </span>
+        </div>
 
-            <button class="icon" title="Previous" @onclick="Player.PreviousAsync">&#9198;</button>
-            <button class="icon primary" title="Play or pause" disabled="@Player.IsPreparing"
-                    @onclick="Player.TogglePlayPauseAsync">
-                @(Player.IsPlaying ? "⏸" : "▶")
+        <div class="transport">
+            <button class="btn round @(Player.IsShuffled ? "on" : "")"
+                    title="Shuffle" aria-label="Shuffle" @onclick="ToggleShuffle">
+                <span class="glyph">&#128256;</span>
             </button>
-            <button class="icon" title="Next" @onclick="Player.NextAsync">&#9197;</button>
-            <button class="icon @(Player.Repeat == RepeatMode.Off ? "" : "on")"
-                    title="@($"Repeat: {Player.Repeat}")" @onclick="Player.CycleRepeat">
-                @(Player.Repeat == RepeatMode.One ? "\U0001F502" : "\U0001F501")
+            <button class="btn round" title="Previous" aria-label="Previous" @onclick="Player.PreviousAsync">
+                <span class="glyph">&#9198;</span>
             </button>
-            <button class="icon" title="Stop" @onclick="Player.StopAsync">&#9209;</button>
+            <button class="btn round large accent" title="Play or pause" aria-label="Play or pause"
+                    disabled="@Player.IsPreparing" @onclick="Player.TogglePlayPauseAsync">
+                <span class="glyph">@(Player.IsPlaying ? "⏸" : "▶")</span>
+            </button>
+            <button class="btn round" title="Next" aria-label="Next" @onclick="Player.NextAsync">
+                <span class="glyph">&#9197;</span>
+            </button>
+            <button class="btn round @(Player.Repeat == RepeatMode.Off ? "" : "on")"
+                    title="Loop" aria-label="Loop" @onclick="CycleRepeat">
+                <span class="glyph">@(Player.Repeat == RepeatMode.One ? "\U0001F502" : "\U0001F501")</span>
+            </button>
+            <button class="btn round danger" title="Stop" aria-label="Stop" @onclick="StopAsync">
+                <span class="glyph">&#9209;</span>
+            </button>
         </div>
 
         @* Playback failures happen off the click path, so they surface here rather
@@ -71,6 +85,9 @@
     private static readonly System.Globalization.CultureInfo Culture =
         System.Globalization.CultureInfo.InvariantCulture;
 
+    private ElementReference _titleElement;
+    private IJSObjectReference? _marquee;
+    private string? _marqueeFor;
     private double? _scrubbing;
 
     /// <summary>Position shown on the slider, held steady while the user drags.</summary>
@@ -85,8 +102,81 @@
     /// <summary>Subscribes to player state so the bar redraws as playback progresses.</summary>
     protected override void OnInitialized() => Player.StateChanged += OnStateChanged;
 
-    /// <summary>Unsubscribes to avoid leaking the handler.</summary>
-    public void Dispose() => Player.StateChanged -= OnStateChanged;
+    /// <summary>Re-measures the title whenever the track changes.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var title = Player.Current?.Title;
+        if (title is null || title == _marqueeFor)
+        {
+            return;
+        }
+
+        _marqueeFor = title;
+
+        try
+        {
+            _marquee ??= await Js.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/LinkAudioPlayer.Ui/js/marquee.js");
+            await _marquee.InvokeVoidAsync("observe", _titleElement);
+            await _marquee.InvokeVoidAsync("refresh", _titleElement);
+        }
+        catch (JSException)
+        {
+            // Scrolling the title is decorative. A static title is a fine fallback.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The web view is already gone.
+        }
+    }
+
+    /// <summary>Toggles shuffle and says what it did, since the icon alone is ambiguous.</summary>
+    private void ToggleShuffle()
+    {
+        Player.ToggleShuffle();
+        Toasts.Show(Player.IsShuffled ? "Shuffle on" : "Shuffle off", "\U0001F500");
+    }
+
+    /// <summary>Cycles loop mode and names the mode it landed on.</summary>
+    private void CycleRepeat()
+    {
+        Player.CycleRepeat();
+
+        var (label, icon) = Player.Repeat switch
+        {
+            RepeatMode.All => ("Loop: all tracks", "\U0001F501"),
+            RepeatMode.One => ("Loop: this track", "\U0001F502"),
+            _ => ("Loop off", "\U0001F501"),
+        };
+
+        Toasts.Show(label, icon);
+    }
+
+    /// <summary>Stops playback and confirms it, since the bar disappears afterwards.</summary>
+    private async Task StopAsync()
+    {
+        await Player.StopAsync();
+        Toasts.Show("Stopped", "⏹");
+    }
+
+    /// <summary>Unsubscribes and releases the marquee module.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        Player.StateChanged -= OnStateChanged;
+
+        if (_marquee is not null)
+        {
+            try
+            {
+                await _marquee.InvokeVoidAsync("unobserve", _titleElement);
+                await _marquee.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The web view is already gone.
+            }
+        }
+    }
 
     /// <summary>Marshals the player callback onto the renderer thread.</summary>
     private void OnStateChanged() => InvokeAsync(StateHasChanged);

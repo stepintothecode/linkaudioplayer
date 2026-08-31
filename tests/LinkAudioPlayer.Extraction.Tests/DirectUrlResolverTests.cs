@@ -24,9 +24,9 @@ public sealed class DirectUrlResolverTests
     [Fact]
     public async Task Derives_a_readable_title_from_the_file_name()
     {
-        var result = await _resolver.ResolveAsync(
+        var result = Assert.Single(await _resolver.ResolveAsync(
             new Uri("https://example.com/media/my_favourite_song.mp3"),
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken));
 
         Assert.Equal("my favourite song", result.Title);
         Assert.Equal("direct", result.Provider);
@@ -35,9 +35,9 @@ public sealed class DirectUrlResolverTests
     [Fact]
     public async Task Decodes_percent_encoded_file_names()
     {
-        var result = await _resolver.ResolveAsync(
+        var result = Assert.Single(await _resolver.ResolveAsync(
             new Uri("https://example.com/Hello%20World.mp3"),
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken));
 
         Assert.Equal("Hello World", result.Title);
     }

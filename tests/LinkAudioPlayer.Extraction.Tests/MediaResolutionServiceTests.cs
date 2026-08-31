@@ -28,9 +28,9 @@ public sealed class MediaResolutionServiceTests
         var second = new FakeMediaResolver("second", priority: 2);
         var service = Build(second, first);
 
-        var result = await service.ResolveAsync(
+        var result = Assert.Single(await service.ResolveAsync(
             "https://example.com/song",
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken));
 
         Assert.Equal("first", result.Provider);
         Assert.NotNull(first.ResolvedUri);
@@ -44,9 +44,9 @@ public sealed class MediaResolutionServiceTests
         var accepting = new FakeMediaResolver("accepting", priority: 2);
         var service = Build(declining, accepting);
 
-        var result = await service.ResolveAsync(
+        var result = Assert.Single(await service.ResolveAsync(
             "https://example.com/song",
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken));
 
         Assert.Equal("accepting", result.Provider);
     }

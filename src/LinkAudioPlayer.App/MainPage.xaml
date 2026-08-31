@@ -4,7 +4,7 @@
              xmlns:b="clr-namespace:Microsoft.AspNetCore.Components.WebView.Maui;assembly=Microsoft.AspNetCore.Components.WebView.Maui"
              xmlns:ui="clr-namespace:LinkAudioPlayer.Ui;assembly=LinkAudioPlayer.Ui"
              x:Class="LinkAudioPlayer.App.MainPage"
-             BackgroundColor="#101014">
+             BackgroundColor="#0d0b12">
 
     <b:BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html">
         <b:BlazorWebView.RootComponents>

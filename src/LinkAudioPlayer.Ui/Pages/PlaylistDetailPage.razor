@@ -5,6 +5,7 @@
 @inject PlayerController Player
 @inject UiErrorState Errors
 @inject IJSRuntime Js
+@inject NavigationManager Nav
 
 @if (_playlist is null)
 {
@@ -12,7 +13,13 @@
 }
 else
 {
-    <h1>@_playlist.Name</h1>
+    <div class="page-head">
+        <button class="btn round" title="Back to playlists" aria-label="Back to playlists"
+                @onclick='() => Nav.NavigateTo("playlists")'>
+            <span class="glyph">&#8592;</span>
+        </button>
+        <h1>@_playlist.Name</h1>
+    </div>
 
     <div class="row">
         <button class="primary" disabled="@(_items.Count == 0)" @onclick="PlayAllAsync">Play all</button>

@@ -60,6 +60,16 @@ It does not exist to defeat advertising, and should not advertise that it does.
 **Keep the DRM list current.** Adding a newly launched DRM service to
 `DrmSourcePolicy` is always a welcome change.
 
+## Not for an app store
+
+This cannot go on Google Play. Play's Intellectual Property policy bans apps that
+let users download copyrighted works without authorisation, and separately says apps
+must not download or access YouTube videos in a way that breaks YouTube's terms. This
+app does exactly that, deliberately, which is why it is sideloaded and personal.
+
+Submitting it would also contradict the rule above about not turning it into a
+service: a store listing is public distribution.
+
 ## If you are asked to take it down
 
 Comply. It is a hobby project. Nothing here is worth a legal fight, and the code

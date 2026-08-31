@@ -19,15 +19,18 @@ public sealed class YoutubeResolver : IMediaResolver
     /// <inheritdoc />
     public int Priority => 20;
 
-    /// <summary>True for youtube.com, music.youtube.com and youtu.be links.</summary>
+    /// <summary>
+    /// True for a single YouTube video link. A list only link goes to
+    /// <see cref="YoutubePlaylistResolver"/> instead.
+    /// </summary>
     public bool CanResolve(Uri uri)
     {
         ArgumentNullException.ThrowIfNull(uri);
-        return YoutubeUrl.IsYoutubeHost(uri.Host);
+        return YoutubeUrl.IsYoutubeHost(uri.Host) && !YoutubeUrl.IsPlaylist(uri);
     }
 
     /// <inheritdoc />
-    public async Task<MediaResolution> ResolveAsync(Uri uri, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<MediaResolution>> ResolveAsync(Uri uri, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(uri);
 
@@ -35,15 +38,18 @@ public sealed class YoutubeResolver : IMediaResolver
         {
             var video = await _youtube.Videos.GetAsync(uri.ToString(), cancellationToken);
 
-            return new MediaResolution(
-                SourceUrl: video.Url,
-                Provider: Name,
-                Title: video.Title,
-                Artist: video.Author.ChannelTitle,
-                Duration: video.Duration,
-                ThumbnailUrl: video.Thumbnails.Count > 0
-                    ? video.Thumbnails.GetWithHighestResolution().Url
-                    : null);
+            return
+            [
+                new MediaResolution(
+                    SourceUrl: video.Url,
+                    Provider: Name,
+                    Title: video.Title,
+                    Artist: video.Author.ChannelTitle,
+                    Duration: video.Duration,
+                    ThumbnailUrl: video.Thumbnails.Count > 0
+                        ? video.Thumbnails.GetWithHighestResolution().Url
+                        : null),
+            ];
         }
         // VideoUnavailableException derives from VideoUnplayableException, so it comes first.
         catch (VideoUnavailableException ex)
@@ -53,6 +59,13 @@ public sealed class YoutubeResolver : IMediaResolver
         catch (VideoUnplayableException ex)
         {
             throw new MediaResolutionException($"YouTube will not play '{uri}'. {ex.Message}", SourceVerdict.Rejected, ex);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new MediaResolutionException(
+                $"'{uri}' is not a YouTube video link this app understands.",
+                SourceVerdict.Rejected,
+                ex);
         }
         catch (YoutubeExplodeException ex)
         {

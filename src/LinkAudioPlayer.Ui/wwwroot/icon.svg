@@ -1,10 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LinkAudioPlayer">
-  <rect width="512" height="512" rx="112" fill="#101014"/>
-  <g fill="#6c8cff">
-    <path d="M174 113 L389 72 L389 143 L174 184 Z"/>
-    <rect x="174" y="113" width="28" height="256"/>
-    <rect x="361" y="72" width="28" height="235"/>
-    <ellipse cx="141" cy="371" rx="54" ry="42"/>
-    <ellipse cx="330" cy="310" rx="54" ry="42"/>
-  </g>
+  <rect width="512" height="512" rx="112" fill="#17141f"/>
+  <rect x="56" y="185" width="175" height="142" rx="71" fill="none" stroke="#c084fc" stroke-width="41"/>
+  <rect x="260" y="189" width="39" height="133" rx="20" fill="#c084fc"/>
+  <rect x="327" y="123" width="39" height="266" rx="20" fill="#af6ffa"/>
+  <rect x="394" y="66" width="39" height="379" rx="20" fill="#9a5cf8"/>
+  <rect x="461" y="153" width="39" height="205" rx="20" fill="#7c3aed"/>
 </svg>

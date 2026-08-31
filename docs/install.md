@@ -97,6 +97,21 @@ nothing else on the phone can read them.
 To clear downloads without losing playlists, remove individual tracks from the
 library and add them again.
 
+## Playing
+
+- **Loop** cycles off, all tracks, this track. Each press names the mode it landed on.
+- **Shuffle** plays the queue in a random order without interrupting the current track.
+  Turning it off returns to the queue order from wherever you are.
+- **Stop** clears the queue and hides the player.
+
+## Adding links
+
+A single video link adds one track. A playlist link adds every video in it, up to 200.
+
+A **mix** link, the ones with `list=RD...`, is refused. YouTube builds those per
+viewer rather than publishing them, so there is nothing to list. Open the mix and add
+the videos you want.
+
 ## Reordering
 
 Both the Library and a playlist reorder by dragging the six dot handle on the left

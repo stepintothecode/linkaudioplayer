@@ -22,7 +22,7 @@ public sealed class MainActivity : MauiAppCompatActivity
     private const int NotificationPermissionRequest = 1000;
 
     /// <summary>Matches the web view background so the inset strips do not flash white.</summary>
-    private static readonly Android.Graphics.Color Background = Android.Graphics.Color.ParseColor("#101014");
+    private static readonly Android.Graphics.Color Background = Android.Graphics.Color.ParseColor("#0d0b12");
 
     /// <inheritdoc />
     protected override void OnCreate(Bundle? savedInstanceState)

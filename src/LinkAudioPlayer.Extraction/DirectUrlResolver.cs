@@ -24,7 +24,7 @@ public sealed class DirectUrlResolver : IMediaResolver
     }
 
     /// <summary>Derives a title from the file name. No network call is made.</summary>
-    public Task<MediaResolution> ResolveAsync(Uri uri, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<MediaResolution>> ResolveAsync(Uri uri, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(uri);
 
@@ -33,12 +33,17 @@ public sealed class DirectUrlResolver : IMediaResolver
             ? uri.Host
             : Uri.UnescapeDataString(fileName).Replace('_', ' ').Trim();
 
-        return Task.FromResult(new MediaResolution(
-            SourceUrl: uri.ToString(),
-            Provider: Name,
-            Title: title,
-            Artist: uri.Host,
-            Duration: null,
-            ThumbnailUrl: null));
+        IReadOnlyList<MediaResolution> resolved =
+        [
+            new MediaResolution(
+                SourceUrl: uri.ToString(),
+                Provider: Name,
+                Title: title,
+                Artist: uri.Host,
+                Duration: null,
+                ThumbnailUrl: null),
+        ];
+
+        return Task.FromResult(resolved);
     }
 }

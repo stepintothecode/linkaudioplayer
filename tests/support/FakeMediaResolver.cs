@@ -31,18 +31,23 @@ public sealed class FakeMediaResolver : IMediaResolver
 
     public bool CanResolve(Uri uri) => _canResolve(uri);
 
-    public Task<MediaResolution> ResolveAsync(Uri uri, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<MediaResolution>> ResolveAsync(Uri uri, CancellationToken cancellationToken)
     {
         ResolvedUri = uri;
         CapturedContext = SynchronizationContext.Current;
         WasCalled = true;
 
-        return Task.FromResult(new MediaResolution(
-            SourceUrl: uri.ToString(),
-            Provider: Name,
-            Title: "Fake",
-            Artist: null,
-            Duration: null,
-            ThumbnailUrl: null));
+        IReadOnlyList<MediaResolution> resolved =
+        [
+            new MediaResolution(
+                SourceUrl: uri.ToString(),
+                Provider: Name,
+                Title: "Fake",
+                Artist: null,
+                Duration: null,
+                ThumbnailUrl: null),
+        ];
+
+        return Task.FromResult(resolved);
     }
 }

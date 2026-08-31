@@ -1,0 +1,25 @@
+@implements IDisposable
+@inject ToastService Toasts
+
+@* Sits above the player so a confirmation never hides the transport controls. *@
+@if (Toasts.Message is { } message)
+{
+    <div class="toast" role="status" @key="message">
+        @if (Toasts.Icon is { } icon)
+        {
+            <span class="toast-icon">@icon</span>
+        }
+        <span>@message</span>
+    </div>
+}
+
+@code {
+    /// <summary>Subscribes so a toast appears as soon as it is raised.</summary>
+    protected override void OnInitialized() => Toasts.Changed += OnChanged;
+
+    /// <summary>Unsubscribes to avoid leaking the handler.</summary>
+    public void Dispose() => Toasts.Changed -= OnChanged;
+
+    /// <summary>Marshals the callback onto the renderer thread.</summary>
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+}

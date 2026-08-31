@@ -53,6 +53,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton(store);
         builder.Services.AddSingleton<UiErrorState>();
+        builder.Services.AddSingleton<ToastService>();
 
         builder.Logging.AddProvider(new InMemoryLoggerProvider(store));
         builder.Logging.SetMinimumLevel(LogLevel.Information);
@@ -94,6 +95,7 @@ public static class MauiProgram
         // Order does not matter. The services sort by Priority.
         services.AddSingleton<IMediaResolver, DirectUrlResolver>();
         services.AddSingleton<IMediaResolver, YoutubeResolver>();
+        services.AddSingleton<IMediaResolver, YoutubePlaylistResolver>();
         services.AddSingleton<IMediaDownloader, DirectUrlDownloader>();
         services.AddSingleton<IMediaDownloader, YoutubeDownloader>();
 
