@@ -202,6 +202,14 @@ checks `PRAGMA table_info` and adds missing columns and indexes.
 are packaged regardless, but without the attribute the launcher shows the default
 Android robot.
 
+**Swipe detection observes, it never intercepts.** `swipe.js` listens passively and
+never calls `preventDefault`, so vertical scrolling and every other touch behaviour is
+untouched. A gesture starting on anything interactive is dropped outright, which is
+what keeps it away from the reorder grip and the scrubber. It uses touch events rather
+than pointer events because `reorder.js` captures the pointer on the grip, and sharing
+that stream invites conflicts. The routing arithmetic lives in `TabNavigation` so the
+edge cases are testable without a device.
+
 **Reordering uses pointer events, not HTML5 drag and drop**, which never fires for
 touch in an Android web view. `reorder.js` shifts rows visually and reports the
 final move; it never mutates the DOM, because Blazor owns that.

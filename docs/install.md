@@ -117,6 +117,15 @@ the videos you want.
 Both the Library and a playlist reorder by dragging the six dot handle on the left
 of a row. The library keeps its own order, so a track stays where you put it.
 
+## Moving between tabs
+
+Swipe left or right anywhere on the page to move between Library, Playlists and
+About. The tabs at the top still work the same way.
+
+Swiping does nothing on a playlist page, so it never competes with the system back
+gesture, and a swipe that starts on a drag handle, the scrubber or a text field is
+ignored.
+
 ## Copying a link
 
 Tap a track's title to reveal the original URL with a **Copy link** button. Tap the

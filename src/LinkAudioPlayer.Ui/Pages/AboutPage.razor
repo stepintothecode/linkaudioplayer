@@ -87,7 +87,8 @@
         await Errors.TryAsync("Exporting the backup", async () =>
         {
             var json = await Backup.ExportAsync(CancellationToken.None);
-            var name = $"linkaudioplayer-backup-{DateTime.Now:yyyy-MM-dd}.json";
+            // Seconds included so two exports in the same minute do not collide.
+            var name = $"linkaudioplayer-backup-{DateTime.Now:yyyy-MM-dd-HHmmss}.json";
 
             if (await Files.SaveAsync(json, name, CancellationToken.None))
             {

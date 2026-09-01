@@ -989,3 +989,41 @@ button.danger,
   font-size: 0.8rem;
   font-weight: 700;
 }
+
+/* Tab transition. The page slides in from the side you came from, which is the
+   only visual difference between a swipe and a tap on the tabs. */
+.page {
+  animation: page-in 0.19s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.page.from-right {
+  animation-name: page-in-right;
+}
+
+.page.from-left {
+  animation-name: page-in-left;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes page-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+}
+
+@keyframes page-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-26px);
+  }
+}
+
+/* No touch-action override here on purpose. swipe.js only observes the gesture and
+   never calls preventDefault, so claiming horizontal panning would buy nothing and
+   risk breaking text selection inside the inputs. */

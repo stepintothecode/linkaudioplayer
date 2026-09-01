@@ -1,5 +1,8 @@
 @inherits LayoutComponentBase
+@implements IAsyncDisposable
 @inject UiErrorState Errors
+@inject NavigationManager Nav
+@inject IJSRuntime Js
 
 @* The boundary matters: without it one thrown exception tears down the renderer and
    every button in the app stops responding until it is force closed. *@
@@ -12,20 +15,24 @@
     </nav>
 </header>
 
-<main>
+<main @ref="_main">
     <ErrorBanner />
 
-    <ErrorBoundary @ref="_boundary">
-        <ChildContent>
-            @Body
-        </ChildContent>
-        <ErrorContent Context="failure">
-            <div class="error" role="alert">
-                <span class="text">This screen failed: @failure.Message</span>
-                <button class="dismiss" title="Try again" @onclick="Recover">Retry</button>
-            </div>
-        </ErrorContent>
-    </ErrorBoundary>
+    @* Keyed on the path so the entry animation replays on every change, and classed
+       by direction so it slides in from the side you came from. *@
+    <div class="page @_slide" @key="_path">
+        <ErrorBoundary @ref="_boundary">
+            <ChildContent>
+                @Body
+            </ChildContent>
+            <ErrorContent Context="failure">
+                <div class="error" role="alert">
+                    <span class="text">This screen failed: @failure.Message</span>
+                    <button class="dismiss" title="Try again" @onclick="Recover">Retry</button>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
+    </div>
 </main>
 
 <ToastHost />
@@ -34,14 +41,100 @@
 
 @code {
     private ErrorBoundary? _boundary;
+    private ElementReference _main;
+    private DotNetObjectReference<MainLayout>? _self;
+    private IJSObjectReference? _swipe;
+    private string _path = string.Empty;
+    private string _slide = string.Empty;
+
+    /// <summary>Follows navigation so the slide direction is known before the render.</summary>
+    protected override void OnInitialized()
+    {
+        _path = CurrentPath();
+        Nav.LocationChanged += OnLocationChanged;
+    }
 
     /// <summary>Resets the boundary on navigation so a past failure does not stick.</summary>
     protected override void OnParametersSet() => _boundary?.Recover();
+
+    /// <summary>Binds the swipe handler once the layout exists.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _swipe ??= await Js.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/LinkAudioPlayer.Ui/js/swipe.js");
+            _self ??= DotNetObjectReference.Create(this);
+            await _swipe.InvokeVoidAsync("attach", _main, _self, nameof(OnSwipe));
+        }
+        catch (JSException)
+        {
+            // Swiping is a shortcut, not the only way to move. The tabs still work.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The web view is already gone.
+        }
+    }
+
+    /// <summary>
+    /// Called from JavaScript when a horizontal swipe finishes.
+    /// Only moves between the three top level tabs. A sub page such as a playlist is
+    /// left alone, so this never competes with the system back gesture.
+    /// </summary>
+    /// <param name="direction">1 to move forward through the tabs, -1 to move back.</param>
+    [JSInvokable]
+    public void OnSwipe(int direction)
+    {
+        if (TabNavigation.Next(CurrentPath(), direction) is { } route)
+        {
+            Nav.NavigateTo(route);
+        }
+    }
 
     /// <summary>Clears the failed state and re-renders the page.</summary>
     private void Recover()
     {
         Errors.Clear();
         _boundary?.Recover();
+    }
+
+    /// <summary>Works out which way the page should enter, then redraws.</summary>
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        var next = CurrentPath();
+
+        _slide = TabNavigation.SlideClass(_path, next);
+        _path = next;
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>The current route, relative and without a query string.</summary>
+    private string CurrentPath() => TabNavigation.Normalise(Nav.ToBaseRelativePath(Nav.Uri));
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+
+        if (_swipe is not null)
+        {
+            try
+            {
+                await _swipe.InvokeVoidAsync("detach", _main);
+                await _swipe.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The web view is already gone.
+            }
+        }
+
+        _self?.Dispose();
     }
 }
