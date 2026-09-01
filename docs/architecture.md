@@ -204,11 +204,21 @@ Android robot.
 
 **Swipe detection observes, it never intercepts.** `swipe.js` listens passively and
 never calls `preventDefault`, so vertical scrolling and every other touch behaviour is
-untouched. A gesture starting on anything interactive is dropped outright, which is
-what keeps it away from the reorder grip and the scrubber. It uses touch events rather
-than pointer events because `reorder.js` captures the pointer on the grip, and sharing
-that stream invites conflicts. The routing arithmetic lives in `TabNavigation` so the
-edge cases are testable without a device.
+untouched. It uses touch events rather than pointer events because `reorder.js`
+captures the pointer on the grip, and sharing that stream invites conflicts. The
+routing arithmetic lives in `TabNavigation` so the edge cases are testable without a
+device.
+
+**The swipe ignore list is short on purpose.** It covers only what owns a horizontal
+drag: inputs, the reorder grip, the scrubber and the player bar. Buttons and links
+were on it at first, which made most of a list row dead to the gesture. The playlists
+page felt stuck because its titles are links, while the library's are plain divs. The
+browser cancels a tap once the finger moves, so a swipe may safely start on either.
+
+**The page follows the finger, damped.** Tracking a fraction of the travel is what
+makes the gesture read as direct without exposing empty space beside the page. At the
+ends of the strip the damping tightens instead of blocking, so the edge feels like a
+wall rather than a dead control.
 
 **Reordering uses pointer events, not HTML5 drag and drop**, which never fires for
 touch in an Android web view. `reorder.js` shifts rows visually and reports the

@@ -991,9 +991,13 @@ button.danger,
 }
 
 /* Tab transition. The page slides in from the side you came from, which is the
-   only visual difference between a swipe and a tap on the tabs. */
+   only visual difference between a swipe and a tap on the tabs.
+   The transition is for the spring back when a swipe does not travel far enough;
+   swipe.js clears it while the finger is down so the page tracks without lag. */
 .page {
   animation: page-in 0.19s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform;
 }
 
 .page.from-right {

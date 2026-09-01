@@ -46,6 +46,7 @@
     private IJSObjectReference? _swipe;
     private string _path = string.Empty;
     private string _slide = string.Empty;
+    private int _sentIndex = int.MinValue;
 
     /// <summary>Follows navigation so the slide direction is known before the render.</summary>
     protected override void OnInitialized()
@@ -57,20 +58,36 @@
     /// <summary>Resets the boundary on navigation so a past failure does not stick.</summary>
     protected override void OnParametersSet() => _boundary?.Recover();
 
-    /// <summary>Binds the swipe handler once the layout exists.</summary>
+    /// <summary>
+    /// Binds the swipe handler, and keeps it told which tab is showing.
+    /// The position is what lets a swipe at either end resist instead of sliding
+    /// towards a tab that is not there.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        var index = TabNavigation.IndexOf(_path);
+        if (!firstRender && index == _sentIndex)
         {
             return;
         }
+
+        _sentIndex = index;
+        var position = new { index, count = TabNavigation.Count };
 
         try
         {
             _swipe ??= await Js.InvokeAsync<IJSObjectReference>(
                 "import", "./_content/LinkAudioPlayer.Ui/js/swipe.js");
             _self ??= DotNetObjectReference.Create(this);
-            await _swipe.InvokeVoidAsync("attach", _main, _self, nameof(OnSwipe));
+
+            if (firstRender)
+            {
+                await _swipe.InvokeVoidAsync("attach", _main, _self, nameof(OnSwipe), position);
+            }
+            else
+            {
+                await _swipe.InvokeVoidAsync("setPosition", position);
+            }
         }
         catch (JSException)
         {

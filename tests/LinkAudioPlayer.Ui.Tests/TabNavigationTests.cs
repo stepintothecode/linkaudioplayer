@@ -68,4 +68,21 @@ public sealed class TabNavigationTests
     [InlineData("", "")]
     public void Normalise_strips_slashes_and_the_query(string input, string expected) =>
         Assert.Equal(expected, TabNavigation.Normalise(input));
+
+    [Theory]
+    [InlineData("", 0)]
+    [InlineData("playlists", 1)]
+    [InlineData("about", 2)]
+    public void Reports_where_a_tab_sits(string path, int expected) =>
+        Assert.Equal(expected, TabNavigation.IndexOf(path));
+
+    // The position is what lets a swipe at either end resist rather than slide
+    // towards a tab that is not there.
+    [Fact]
+    public void A_sub_page_has_no_position() =>
+        Assert.Equal(-1, TabNavigation.IndexOf("playlists/0199b0d2-1234-7000-8000-000000000000"));
+
+    [Fact]
+    public void Count_matches_the_tab_strip() =>
+        Assert.Equal(TabNavigation.Tabs.Length, TabNavigation.Count);
 }
