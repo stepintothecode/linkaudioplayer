@@ -28,11 +28,16 @@ DRM protected services like Spotify and Apple Music are refused by design. See
 [docs/legal-boundaries.md](docs/legal-boundaries.md) for why, and read it before
 contributing.
 
+## Backup
+
+The **About** tab exports your whole library and every playlist as a JSON file, and
+imports one back. Importing merges: nothing is deleted, a link already in the library
+is not added twice, and a playlist that already exists only gains what it is missing.
+
 ## When something goes wrong
 
-Every failure shows a banner with a **See logs** link, and there is a **Logs** tab
-in the header. It keeps the last 500 entries with full stack traces, survives the
-error that produced it, and has a copy button. Start there.
+Failures show a banner naming what went wrong. Playback failures appear in the player
+itself.
 
 ## Docs
 
@@ -48,3 +53,8 @@ Source images live in [assets/logo/](assets/logo/): square PNGs from 16 to 1024,
 rounded variants, a transparent foreground for the Android adaptive icon, and a
 multi resolution `icon.ico`. Regenerate them with
 [tools/make-icons.py](tools/make-icons.py).
+
+## Author
+
+Built by [StepIntoTheCode](https://github.com/stepintothecode).
+Free, ad free and tracker free. [Support the project](https://stepintothecode.github.io/support/?from=linkaudioplayer-app).

@@ -427,15 +427,6 @@ button.icon {
   word-break: break-word;
 }
 
-.error .logs-link {
-  color: var(--text);
-  background: rgb(244 103 107 / 20%);
-  padding: 0.4rem 0.65rem;
-  border-radius: 999px;
-  text-decoration: none;
-  white-space: nowrap;
-  font-weight: 600;
-}
 
 .error .dismiss {
   min-height: 34px;
@@ -445,6 +436,124 @@ button.icon {
   border-color: transparent;
   box-shadow: none;
   color: var(--danger);
+}
+
+/* Search row, visually secondary to the primary action above it. */
+.row.search {
+  margin-top: 0.6rem;
+}
+
+.row.search input {
+  background: var(--surface);
+  font-size: 0.9rem;
+}
+
+/* Where the queue came from, above the track title. */
+.queue-name {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* About */
+.about-card {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.about-mark {
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.about-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.about-by {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.about-lede {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.about-result {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  background: rgb(52 211 153 / 12%);
+  border: 1px solid rgb(52 211 153 / 30%);
+  color: var(--ok);
+  font-size: 0.86rem;
+}
+
+.ways {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.way {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+  transition: transform 0.12s ease, border-color 0.15s ease;
+}
+
+.way:active {
+  transform: translateY(2px) scale(0.99);
+  border-color: var(--accent);
+}
+
+.way-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.way-name {
+  display: block;
+  font-weight: 600;
+}
+
+.way-note {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.way-chev {
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.fine {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  margin-top: 1rem;
 }
 
 /* Toast, above the player so it never covers the transport. */
@@ -623,103 +732,6 @@ button.icon {
   border-right: none;
   border-bottom: none;
   font-size: 0.8rem;
-}
-
-/* Logs */
-.logs {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.log {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.55rem 0.7rem;
-}
-
-.log.err {
-  border-left-color: var(--danger);
-}
-
-.log.warn {
-  border-left-color: var(--warn);
-}
-
-.log.dim {
-  opacity: 0.6;
-}
-
-.log-head {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  width: 100%;
-  padding: 0;
-  min-height: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  text-align: left;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.log-head:active:not(:disabled) {
-  transform: none;
-  box-shadow: none;
-}
-
-.log-level {
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.log.err .log-level {
-  color: var(--danger);
-}
-
-.log.warn .log-level {
-  color: var(--warn);
-}
-
-.log-time {
-  font-variant-numeric: tabular-nums;
-}
-
-.log-cat {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.log-flag {
-  color: var(--accent-soft);
-}
-
-.log-message {
-  font-size: 0.84rem;
-  margin-top: 0.25rem;
-  word-break: break-word;
-}
-
-.log-stack {
-  margin: 0.5rem 0 0;
-  padding: 0.55rem;
-  background: #08070c;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  line-height: 1.45;
-  overflow-x: auto;
-  white-space: pre;
 }
 
 /* Fallback shown when Blazor itself fails. Kept clear of the nav bar. */

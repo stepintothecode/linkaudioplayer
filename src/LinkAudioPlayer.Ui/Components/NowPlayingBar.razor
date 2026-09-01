@@ -30,6 +30,10 @@
         }
 
         <div class="now">
+            @if (Player.QueueName is { } queue)
+            {
+                <span class="queue-name">@queue</span>
+            }
             <div class="marquee" @ref="_titleElement">
                 <span class="marquee-text">@track.Title</span>
             </div>
@@ -75,7 +79,6 @@
         {
             <div class="error player-error" role="alert">
                 <span class="text">@error</span>
-                <a class="logs-link" href="logs">See logs</a>
             </div>
         }
     </div>

@@ -8,7 +8,7 @@
     <nav>
         <NavLink href="" Match="NavLinkMatch.All" ActiveClass="active">Library</NavLink>
         <NavLink href="playlists" ActiveClass="active">Playlists</NavLink>
-        <NavLink href="logs" ActiveClass="active">Logs</NavLink>
+        <NavLink href="about" ActiveClass="active">About</NavLink>
     </nav>
 </header>
 
@@ -22,7 +22,6 @@
         <ErrorContent Context="failure">
             <div class="error" role="alert">
                 <span class="text">This screen failed: @failure.Message</span>
-                <a class="logs-link" href="logs">See logs</a>
                 <button class="dismiss" title="Try again" @onclick="Recover">Retry</button>
             </div>
         </ErrorContent>

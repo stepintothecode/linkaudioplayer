@@ -20,24 +20,44 @@
     </button>
 </div>
 
-<h2>Tracks (@_tracks.Count)</h2>
+@if (_tracks.Count > 0)
+{
+    <div class="row search">
+        <input type="text" inputmode="search" placeholder="Search tracks"
+               @bind="_search" @bind:event="oninput" />
+        @if (!string.IsNullOrEmpty(_search))
+        {
+            <button class="icon" title="Clear search" @onclick='() => _search = string.Empty'>✕</button>
+        }
+    </div>
+}
+
+<h2>Tracks (@Visible.Count@(IsFiltered ? $" of {_tracks.Count}" : ""))</h2>
 
 @if (_tracks.Count == 0)
 {
     <p class="empty">Nothing here yet. Add a link above.</p>
 }
+else if (Visible.Count == 0)
+{
+    <p class="empty">No track matches that search.</p>
+}
 else
 {
-    <p class="hint">Drag the handle to reorder.</p>
-    <ul class="list reorderable" @ref="_listElement">
-        @foreach (var (entry, index) in _tracks.Select((t, i) => (t, i)))
+    @* Reordering is disabled while filtering, because positions would be ambiguous. *@
+    <p class="hint">@(IsFiltered ? "Clear the search to reorder." : "Drag the handle to reorder.")</p>
+    <ul class="list @(IsFiltered ? "" : "reorderable")" @ref="_listElement">
+        @foreach (var (entry, index) in Visible.Select((t, i) => (t, i)))
         {
             <li @key="entry.Track.Id" data-index="@index"
                 class="item @(Player.Current?.Id == entry.Track.Id ? "playing" : "")">
-                <span class="grip" title="Drag to reorder" aria-label="Reorder">
-                    <span></span><span></span><span></span>
-                    <span></span><span></span><span></span>
-                </span>
+                @if (!IsFiltered)
+                {
+                    <span class="grip" title="Drag to reorder" aria-label="Reorder">
+                        <span></span><span></span><span></span>
+                        <span></span><span></span><span></span>
+                    </span>
+                }
                 <img class="art" src="@Artwork(entry.Track)" alt="" loading="lazy" />
                 <div class="meta">
                     <span class="title">@entry.Track.Title</span>
@@ -64,19 +84,42 @@ else
 @code {
     private List<LibraryTrack> _tracks = [];
     private readonly HashSet<Guid> _downloading = [];
+    private string _search = string.Empty;
     private ElementReference _listElement;
     private DotNetObjectReference<LibraryPage>? _self;
     private IJSObjectReference? _reorder;
     private string _url = string.Empty;
     private bool _busy;
 
-    /// <summary>Loads the library on first render.</summary>
-    protected override async Task OnInitializedAsync() => await RefreshAsync();
+    /// <summary>True when a search is narrowing the list.</summary>
+    private bool IsFiltered => !string.IsNullOrWhiteSpace(_search);
+
+    /// <summary>Tracks matching the current search, or all of them.</summary>
+    private List<LibraryTrack> Visible =>
+        IsFiltered
+            ? [.. _tracks.Where(t => Matches(t, _search.Trim()))]
+            : _tracks;
+
+    /// <summary>Loads the library and follows playback, so the playing row stays marked.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        Player.StateChanged += OnPlayerChanged;
+        await RefreshAsync();
+    }
+
+    /// <summary>Matches a track on title, artist or provider.</summary>
+    private static bool Matches(LibraryTrack entry, string term) =>
+        entry.Track.Title.Contains(term, StringComparison.OrdinalIgnoreCase)
+        || (entry.Track.Artist?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+        || entry.Track.Provider.Contains(term, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Redraws when the player moves to another track.</summary>
+    private void OnPlayerChanged() => InvokeAsync(StateHasChanged);
 
     /// <summary>Binds the drag handler once the list exists.</summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_tracks.Count == 0)
+        if (_tracks.Count == 0 || IsFiltered)
         {
             return;
         }
@@ -150,7 +193,7 @@ else
     /// <summary>Queues the whole library starting at the chosen track.</summary>
     private async Task PlayFromAsync(int index) => await Errors.TryAsync(
         "Playing the track",
-        async () => await Player.PlayQueueAsync(_tracks.Select(t => t.Track), index));
+        async () => await Player.PlayQueueAsync(Visible.Select(t => t.Track), "Library Tracks", index));
 
     /// <summary>Downloads a track so it plays instantly and works offline.</summary>
     private async Task DownloadAsync(Guid trackId)
@@ -183,6 +226,8 @@ else
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        Player.StateChanged -= OnPlayerChanged;
+
         if (_reorder is not null)
         {
             try

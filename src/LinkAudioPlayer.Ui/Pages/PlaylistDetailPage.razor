@@ -91,8 +91,14 @@ else
     private IJSObjectReference? _reorder;
     private bool _loaded;
 
+    /// <summary>Follows playback, so the playing row stays marked as the queue advances.</summary>
+    protected override void OnInitialized() => Player.StateChanged += OnPlayerChanged;
+
     /// <summary>Reloads whenever the route identifier changes.</summary>
     protected override async Task OnParametersSetAsync() => await RefreshAsync();
+
+    /// <summary>Redraws when the player moves to another track.</summary>
+    private void OnPlayerChanged() => InvokeAsync(StateHasChanged);
 
     /// <summary>Binds the drag handler once the list exists.</summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -139,7 +145,7 @@ else
     private async Task PlayFromAsync(int index) => await Errors.TryAsync("Playing the playlist", async () =>
     {
         var tracks = _items.Select(i => i.Track).OfType<Track>().ToList();
-        await Player.PlayQueueAsync(tracks, index);
+        await Player.PlayQueueAsync(tracks, _playlist?.Name ?? "Playlist", index);
     });
 
     /// <summary>Appends a library track to this playlist.</summary>
@@ -185,6 +191,8 @@ else
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        Player.StateChanged -= OnPlayerChanged;
+
         if (_reorder is not null)
         {
             try

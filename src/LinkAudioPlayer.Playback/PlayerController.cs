@@ -47,6 +47,9 @@ public sealed class PlayerController : IAsyncDisposable
     /// <summary>True when the queue plays in a shuffled order.</summary>
     public bool IsShuffled { get; private set; }
 
+    /// <summary>Where the queue came from, shown above the track. Null when nothing is queued.</summary>
+    public string? QueueName { get; private set; }
+
     /// <summary>Track currently loaded, or null.</summary>
     public Track? Current => CurrentIndex >= 0 && CurrentIndex < _queue.Count ? _queue[CurrentIndex] : null;
 
@@ -75,10 +78,14 @@ public sealed class PlayerController : IAsyncDisposable
     public string? Error { get; private set; }
 
     /// <summary>Replaces the queue and starts playing at the given index.</summary>
-    public async Task PlayQueueAsync(IEnumerable<Track> tracks, int startIndex = 0)
+    /// <param name="tracks">Tracks to queue.</param>
+    /// <param name="queueName">Where they came from, such as a playlist name.</param>
+    /// <param name="startIndex">Index into <paramref name="tracks"/> to start at.</param>
+    public async Task PlayQueueAsync(IEnumerable<Track> tracks, string queueName, int startIndex = 0)
     {
         ArgumentNullException.ThrowIfNull(tracks);
 
+        QueueName = queueName;
         _queue.Clear();
         _queue.AddRange(tracks);
 
@@ -194,6 +201,7 @@ public sealed class PlayerController : IAsyncDisposable
         _queue.Clear();
         _order.Clear();
         _orderIndex = -1;
+        QueueName = null;
         IsPlaying = false;
         IsPreparing = false;
         Position = TimeSpan.Zero;

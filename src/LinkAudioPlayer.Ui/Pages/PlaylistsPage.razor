@@ -1,26 +1,44 @@
 @page "/playlists"
 @inject IPlaylistStore Playlists
 @inject UiErrorState Errors
+@inject ToastService Toasts
 
 <h1 class="visually-hidden">Playlists</h1>
 
 <div class="row">
-    <input type="text" placeholder="New playlist name" @bind="_name" @bind:event="oninput" />
+    <input type="text" placeholder="New playlist name" @bind="_name" @bind:event="oninput"
+           @onkeydown="OnKeyDown" />
     <button class="primary" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="CreateAsync">Create</button>
 </div>
 
-<h2>Playlists (@_playlists.Count)</h2>
+@if (_playlists.Count > 0)
+{
+    <div class="row search">
+        <input type="text" inputmode="search" placeholder="Search playlists"
+               @bind="_search" @bind:event="oninput" />
+        @if (!string.IsNullOrEmpty(_search))
+        {
+            <button class="icon" title="Clear search" @onclick='() => _search = string.Empty'>✕</button>
+        }
+    </div>
+}
+
+<h2>Playlists (@Visible.Count@(IsFiltered ? $" of {_playlists.Count}" : ""))</h2>
 
 @if (_playlists.Count == 0)
 {
     <p class="empty">No playlists yet.</p>
 }
+else if (Visible.Count == 0)
+{
+    <p class="empty">No playlist matches that search.</p>
+}
 else
 {
     <ul class="list">
-        @foreach (var playlist in _playlists)
+        @foreach (var playlist in Visible)
         {
-            <li class="item">
+            <li class="item" @key="playlist.Id">
                 <div class="meta">
                     <a class="title" href="@($"playlists/{playlist.Id}")">@playlist.Name</a>
                     <span class="sub">@playlist.Items.Count track(s)</span>
@@ -34,11 +52,30 @@ else
 @code {
     private List<Playlist> _playlists = [];
     private string _name = string.Empty;
+    private string _search = string.Empty;
+
+    /// <summary>True when a search is narrowing the list.</summary>
+    private bool IsFiltered => !string.IsNullOrWhiteSpace(_search);
+
+    /// <summary>Playlists matching the current search, or all of them.</summary>
+    private List<Playlist> Visible =>
+        IsFiltered
+            ? [.. _playlists.Where(p => p.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))]
+            : _playlists;
 
     /// <summary>Loads playlists on first render.</summary>
     protected override async Task OnInitializedAsync() => await RefreshAsync();
 
-    /// <summary>Creates a playlist with the entered name.</summary>
+    /// <summary>Creates on Enter, so the keyboard alone is enough.</summary>
+    private async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await CreateAsync();
+        }
+    }
+
+    /// <summary>Creates a playlist, refusing a name already in use.</summary>
     private async Task CreateAsync()
     {
         if (string.IsNullOrWhiteSpace(_name))
@@ -47,16 +84,25 @@ else
         }
 
         var name = _name.Trim();
+        Playlist? created = null;
 
-        var created = await Errors.TryAsync(
+        var ok = await Errors.TryAsync(
             "Creating the playlist",
-            async () => await Playlists.CreateAsync(name, description: null, CancellationToken.None));
+            async () => created = await Playlists.CreateAsync(name, description: null, CancellationToken.None));
 
-        if (created)
+        if (!ok)
         {
-            _name = string.Empty;
+            return;
         }
 
+        if (created is null)
+        {
+            Toasts.Show($"A playlist called {name} already exists", "⚠");
+            return;
+        }
+
+        _name = string.Empty;
+        Toasts.Show($"Created {created.Name}", "➕");
         await RefreshAsync();
     }
 

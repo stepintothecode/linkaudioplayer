@@ -109,6 +109,14 @@ If you add another network boundary, hop off the caller's thread and add a test
 asserting `SynchronizationContext.Current` is null inside the work. See
 `MediaDownloadServiceTests`.
 
+## Backup format
+
+`BackupDocument` is versioned. Adding a field is fine; changing or removing one means
+raising `CurrentVersion` and handling the older shape on import. A backup written by a
+newer version is refused rather than half read.
+
+Tracks are referenced by source URL, never by id, because ids are local to one install.
+
 ## Adding a source
 
 Implement `IMediaResolver` and `IMediaDownloader`, register both in

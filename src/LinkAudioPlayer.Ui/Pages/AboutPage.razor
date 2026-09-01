@@ -1,0 +1,145 @@
+@page "/about"
+@inject BackupService Backup
+@inject IBackupFileService Files
+@inject IExternalBrowser Browser
+@inject UiErrorState Errors
+@inject ToastService Toasts
+
+<h1>About</h1>
+
+<div class="about-card">
+    <img class="about-mark" src="_content/LinkAudioPlayer.Ui/icon.svg" alt="" width="56" height="56" />
+    <div>
+        <div class="about-name">LinkAudioPlayer</div>
+        <div class="about-by">by StepIntoTheCode</div>
+    </div>
+</div>
+
+<p class="about-lede">
+    Paste a link, build playlists, listen with the screen off. Everything stays on this
+    phone. No account, no ads, no tracking.
+</p>
+
+<h2>Backup</h2>
+
+<p class="hint">
+    Your library and playlists live only on this device. A backup is a plain JSON file
+    you keep wherever you like.
+</p>
+
+<div class="row wrap">
+    <button class="primary" disabled="@_busy" @onclick="ExportAsync">
+        @(_busy ? "Working" : "Export backup")
+    </button>
+    <button disabled="@_busy" @onclick="ImportAsync">Import backup</button>
+</div>
+
+<p class="hint">
+    Importing merges. Nothing is deleted, a link already in the library is not added
+    twice, and a playlist that already exists only gains what it is missing.
+</p>
+
+@if (_result is { } result)
+{
+    <p class="about-result">@result</p>
+}
+
+<h2>Support</h2>
+
+<p class="hint">
+    Everything here is free, ad free and tracker free, and stays that way.
+</p>
+
+<div class="ways">
+    <a class="way" href="@SupportUrl" @onclick="OpenSupportAsync" @onclick:preventDefault>
+        <span class="way-text">
+            <span class="way-name">Support this project</span>
+            <span class="way-note">GitHub Sponsors or Ko-fi</span>
+        </span>
+        <span class="way-chev">&#8250;</span>
+    </a>
+
+    <a class="way" href="@GitHubUrl" @onclick="OpenGitHubAsync" @onclick:preventDefault>
+        <span class="way-text">
+            <span class="way-name">Source and issues</span>
+            <span class="way-note">github.com/stepintothecode</span>
+        </span>
+        <span class="way-chev">&#8250;</span>
+    </a>
+
+    <a class="way" href="@YouTubeUrl" @onclick="OpenYouTubeAsync" @onclick:preventDefault>
+        <span class="way-text">
+            <span class="way-name">See what I build</span>
+            <span class="way-note">youtube.com/@@StepIntoTheCode</span>
+        </span>
+        <span class="way-chev">&#8250;</span>
+    </a>
+</div>
+
+<p class="fine">
+    A voluntary tip, not a purchase. It buys no features, no priority support and no
+    say over the app. Opens in your browser.
+</p>
+
+@code {
+    private const string SupportUrl = "https://stepintothecode.github.io/support/?from=linkaudioplayer-app";
+    private const string GitHubUrl = "https://github.com/stepintothecode";
+    private const string YouTubeUrl = "https://www.youtube.com/@StepIntoTheCode";
+
+    private string? _result;
+    private bool _busy;
+
+    /// <summary>Writes the whole library and playlists out for the user to keep.</summary>
+    private async Task ExportAsync()
+    {
+        _busy = true;
+        _result = null;
+
+        await Errors.TryAsync("Exporting the backup", async () =>
+        {
+            var json = await Backup.ExportAsync(CancellationToken.None);
+            var name = $"linkaudioplayer-backup-{DateTime.Now:yyyy-MM-dd}.json";
+
+            if (await Files.SaveAsync(json, name, CancellationToken.None))
+            {
+                Toasts.Show("Backup ready", "\U0001F4BE");
+            }
+        });
+
+        _busy = false;
+    }
+
+    /// <summary>Merges a previously saved backup into the current data.</summary>
+    private async Task ImportAsync()
+    {
+        _busy = true;
+        _result = null;
+
+        await Errors.TryAsync("Importing the backup", async () =>
+        {
+            var json = await Files.OpenAsync(CancellationToken.None);
+            if (json is null)
+            {
+                return;
+            }
+
+            var summary = await Backup.ImportAsync(json, CancellationToken.None);
+            _result = summary.ToString();
+            Toasts.Show(summary.IsEmpty ? "Nothing new to add" : "Backup imported", "\U0001F4E5");
+        });
+
+        _busy = false;
+    }
+
+    // Opened in the real browser rather than a web view. A payment page inside the app
+    // reads as an in app purchase to the stores, and is refused.
+    private async Task OpenSupportAsync() => await OpenAsync(SupportUrl);
+
+    private async Task OpenGitHubAsync() => await OpenAsync(GitHubUrl);
+
+    private async Task OpenYouTubeAsync() => await OpenAsync(YouTubeUrl);
+
+    private async Task OpenAsync(string url) => await Errors.TryAsync(
+        "Opening the link",
+        async () => await Browser.OpenAsync(url, CancellationToken.None));
+}

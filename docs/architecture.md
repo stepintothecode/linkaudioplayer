@@ -40,7 +40,8 @@ Under `src/`:
 | `LinkAudioPlayer.Storage` | On device media cache and download dispatch. | Abstractions |
 | `LinkAudioPlayer.Library` | Adding, downloading and removing tracks. | Abstractions, Extraction |
 | `LinkAudioPlayer.Playback` | Queue and transport rules. | Abstractions |
-| `LinkAudioPlayer.Diagnostics` | In memory log buffer and global exception hooks. | nothing |
+| `LinkAudioPlayer.Diagnostics` | Global exception hooks and a log sink. | nothing |
+| `LinkAudioPlayer.Backup` | Export and merge of the whole library and playlists. | Abstractions |
 | `LinkAudioPlayer.Ui` | Razor pages and components. | Library, Playback |
 | `LinkAudioPlayer.App` | MAUI host, Android audio and service. | all of the above |
 
@@ -101,6 +102,24 @@ context matches how the app actually behaves.
 **`PlayerController` is a singleton.** The queue and the audio session have to
 survive navigation between pages.
 
+**A backup references tracks by source URL, not by id.** Ids are local, so a file
+restored onto another install would point at nothing. The URL is also the identity
+used to skip a track already in the library.
+
+**Importing merges and never deletes.** A track already present is skipped, a playlist
+that already exists gains only the entries it lacks, and the same link may sit in any
+number of playlists. That last rule is why playlist membership is deduplicated per
+playlist rather than globally.
+
+**Playlist names are unique, compared trimmed and case insensitively.** Two playlists
+with the same name were indistinguishable in the list and made import ambiguous. The
+check lowercases both sides rather than trusting the SQLite collation, which is case
+sensitive by default.
+
+**Support links open in the device browser, never in the web view.** A payment page
+inside an app reads as an in app purchase that skipped store billing. Android needs a
+`<queries>` block for `https` or the launch silently does nothing.
+
 **Shuffle is a separate play order, not a shuffled queue.** `_queue` keeps the order
 tracks were given and `_order` holds indices in play order. Toggling shuffle never
 interrupts what is playing, and turning it off restores the original sequence from
@@ -122,6 +141,15 @@ download, which is a pool thread, so `AndroidAudioPlayer` marshals through
 **Android insets are applied as padding on the content view**, not through CSS
 `env(safe-area-inset)`. Android 15 forces edge to edge, and the web view does not
 reliably report the insets, so `MainActivity` reads them and pads instead.
+
+**Pages that show the playing row subscribe to `PlayerController.StateChanged`.**
+Without it the highlight stuck to whatever was playing when the page rendered, because
+nothing told Blazor the queue had advanced.
+
+**The log viewer was removed, the sink was not.** `InMemoryLogStore` is still the only
+logging provider in a Release build, and `GlobalExceptionHandler` still marks unobserved
+task exceptions observed so a background failure cannot take the process down. Nothing
+reads the buffer any more, so diagnosing a new bug means adding a way to read it back.
 
 **Nothing throws out of a UI handler.** An escaped exception tears down the Blazor
 renderer, and every button in the app stops responding until it is force closed.

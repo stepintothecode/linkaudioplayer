@@ -22,7 +22,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Starts_at_the_requested_index()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b", "c"), startIndex: 1);
+        await _controller.PlayQueueAsync(Tracks("a", "b", "c"), "Test queue", startIndex: 1);
 
         Assert.Equal(1, _controller.CurrentIndex);
         Assert.Equal("b", _controller.Current!.Title);
@@ -32,7 +32,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Clamps_an_out_of_range_start_index()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"), startIndex: 99);
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue", startIndex: 99);
 
         Assert.Equal(1, _controller.CurrentIndex);
     }
@@ -40,7 +40,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Downloads_a_track_that_is_not_cached_yet()
     {
-        await _controller.PlayQueueAsync(Tracks("a"));
+        await _controller.PlayQueueAsync(Tracks("a"), "Test queue");
 
         Assert.Equal(["a"], _cache.Downloaded);
         Assert.Single(_player.LoadedPaths);
@@ -51,7 +51,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     {
         _cache.Add("a");
 
-        await _controller.PlayQueueAsync(Tracks("a"));
+        await _controller.PlayQueueAsync(Tracks("a"), "Test queue");
 
         Assert.Empty(_cache.Downloaded);
         Assert.Single(_player.LoadedPaths);
@@ -60,7 +60,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Advances_when_a_track_finishes()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"));
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue");
 
         _player.RaiseCompleted();
         await WaitForIndex(1);
@@ -71,7 +71,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Stops_at_the_end_of_the_queue_when_repeat_is_off()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"), startIndex: 1);
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue", startIndex: 1);
 
         _player.RaiseCompleted();
         await Task.Delay(50, TestContext.Current.CancellationToken);
@@ -83,7 +83,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Wraps_to_the_start_when_repeating_all()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"), startIndex: 1);
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue", startIndex: 1);
         _controller.CycleRepeat();
 
         Assert.Equal(RepeatMode.All, _controller.Repeat);
@@ -97,7 +97,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Replays_the_same_track_when_repeating_one()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"));
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue");
         _controller.CycleRepeat();
         _controller.CycleRepeat();
 
@@ -113,7 +113,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task A_manual_skip_ignores_repeat_one()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"));
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue");
         _controller.CycleRepeat();
         _controller.CycleRepeat();
 
@@ -125,7 +125,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Previous_restarts_the_track_when_past_three_seconds()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"), startIndex: 1);
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue", startIndex: 1);
         _player.AdvanceTo(TimeSpan.FromSeconds(10));
 
         await _controller.PreviousAsync();
@@ -137,7 +137,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Previous_steps_back_when_near_the_start()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"), startIndex: 1);
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue", startIndex: 1);
         _player.AdvanceTo(TimeSpan.FromSeconds(1));
 
         await _controller.PreviousAsync();
@@ -148,7 +148,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Previous_on_the_first_track_restarts_it()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"));
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue");
         _player.AdvanceTo(TimeSpan.FromSeconds(1));
 
         await _controller.PreviousAsync();
@@ -159,7 +159,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Lock_screen_next_advances_the_queue()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"));
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue");
 
         _player.RaiseNextRequested();
         await WaitForIndex(1);
@@ -170,7 +170,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Lock_screen_previous_steps_back()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"), startIndex: 1);
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue", startIndex: 1);
 
         _player.RaisePreviousRequested();
         await WaitForIndex(0);
@@ -181,7 +181,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Toggling_pauses_and_resumes()
     {
-        await _controller.PlayQueueAsync(Tracks("a"));
+        await _controller.PlayQueueAsync(Tracks("a"), "Test queue");
 
         await _controller.TogglePlayPauseAsync();
         Assert.False(_controller.IsPlaying);
@@ -193,7 +193,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Stopping_clears_the_queue()
     {
-        await _controller.PlayQueueAsync(Tracks("a", "b"));
+        await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue");
 
         await _controller.StopAsync();
 
@@ -208,7 +208,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     {
         _cache.StoreFailure = new InvalidOperationException("no audio stream");
 
-        await _controller.PlayQueueAsync(Tracks("a"));
+        await _controller.PlayQueueAsync(Tracks("a"), "Test queue");
 
         Assert.Equal("no audio stream", _controller.Error);
         Assert.Empty(_player.LoadedPaths);
@@ -218,7 +218,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Surfaces_a_playback_failure()
     {
-        await _controller.PlayQueueAsync(Tracks("a"));
+        await _controller.PlayQueueAsync(Tracks("a"), "Test queue");
 
         _player.RaiseFailed("codec not supported");
 
@@ -240,7 +240,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
             CacheKey = "a",
         };
 
-        await _controller.PlayQueueAsync([track]);
+        await _controller.PlayQueueAsync([track], "Test queue");
 
         var metadata = _player.LastMetadata;
         Assert.NotNull(metadata);
@@ -253,7 +253,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task An_empty_queue_leaves_nothing_playing()
     {
-        await _controller.PlayQueueAsync([]);
+        await _controller.PlayQueueAsync([], "Test queue");
 
         Assert.Equal(-1, _controller.CurrentIndex);
         Assert.Null(_controller.Current);
@@ -266,7 +266,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
         _cache.StoreGate = new TaskCompletionSource();
         _cache.Add("b");
 
-        var first = _controller.PlayQueueAsync(Tracks("a", "b"));
+        var first = _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue");
         await _controller.NextAsync();
 
         _cache.StoreGate.SetResult();
@@ -299,7 +299,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Shuffle_keeps_the_current_track_playing()
     {
-        await _controller.PlayQueueAsync(Tracks(6), startIndex: 3);
+        await _controller.PlayQueueAsync(Tracks(6), "Test queue", startIndex: 3);
         var before = _controller.Current;
 
         _controller.ToggleShuffle();
@@ -311,7 +311,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Shuffle_visits_every_track_exactly_once()
     {
-        await _controller.PlayQueueAsync(Tracks(8));
+        await _controller.PlayQueueAsync(Tracks(8), "Test queue");
         _controller.ToggleShuffle();
 
         var seen = new List<Guid> { _controller.Current!.Id };
@@ -327,7 +327,7 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     [Fact]
     public async Task Turning_shuffle_off_restores_the_queue_order()
     {
-        await _controller.PlayQueueAsync(Tracks(5), startIndex: 2);
+        await _controller.PlayQueueAsync(Tracks(5), "Test queue", startIndex: 2);
         _controller.ToggleShuffle();
         _controller.ToggleShuffle();
 
@@ -342,10 +342,21 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     public async Task Shuffle_before_anything_is_queued_is_harmless()
     {
         _controller.ToggleShuffle();
-        await _controller.PlayQueueAsync(Tracks(3));
+        await _controller.PlayQueueAsync(Tracks(3), "Test queue");
 
         Assert.True(_controller.IsShuffled);
         Assert.NotNull(_controller.Current);
+    }
+
+    [Fact]
+    public async Task Remembers_where_the_queue_came_from()
+    {
+        await _controller.PlayQueueAsync(Tracks(2), "Evening mix");
+
+        Assert.Equal("Evening mix", _controller.QueueName);
+
+        await _controller.StopAsync();
+        Assert.Null(_controller.QueueName);
     }
 
     private static List<Track> Tracks(int count) =>

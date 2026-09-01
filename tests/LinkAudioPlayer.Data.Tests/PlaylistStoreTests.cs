@@ -121,10 +121,51 @@ public sealed class PlaylistStoreTests : IAsyncLifetime
         Assert.Equal(2, Assert.Single(playlists).Items.Count);
     }
 
+    // Two playlists with the same name were indistinguishable in the list.
+    [Fact]
+    public async Task Refuses_a_duplicate_name()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        Assert.NotNull(await _store.CreateAsync("Focus", null, ct));
+        Assert.Null(await _store.CreateAsync("Focus", null, ct));
+    }
+
+    [Fact]
+    public async Task Compares_names_trimmed_and_case_insensitively()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        Assert.NotNull(await _store.CreateAsync("Focus", null, ct));
+        Assert.Null(await _store.CreateAsync("  focus  ", null, ct));
+    }
+
+    [Fact]
+    public async Task Reports_whether_a_name_is_taken()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var created = await _store.CreateAsync("Focus", null, ct);
+
+        Assert.True(await _store.NameExistsAsync("focus", null, ct));
+        Assert.False(await _store.NameExistsAsync("Focus", created!.Id, ct));
+        Assert.False(await _store.NameExistsAsync("Other", null, ct));
+    }
+
+    [Fact]
+    public async Task Renaming_onto_an_existing_name_is_refused()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _store.CreateAsync("Focus", null, ct);
+        var second = await _store.CreateAsync("Chill", null, ct);
+
+        Assert.False(await _store.RenameAsync(second!.Id, "Focus", null, ct));
+        Assert.True(await _store.RenameAsync(second.Id, "Evening", null, ct));
+    }
+
     private async Task<Guid> CreateAsync()
     {
         var playlist = await _store.CreateAsync("List", null, TestContext.Current.CancellationToken);
-        return playlist.Id;
+        return playlist!.Id;
     }
 
     private async Task AppendAsync(Guid playlistId, Guid trackId) =>

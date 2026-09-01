@@ -117,21 +117,20 @@ the videos you want.
 Both the Library and a playlist reorder by dragging the six dot handle on the left
 of a row. The library keeps its own order, so a track stays where you put it.
 
-## Reading the logs
+## Backup
 
-Anything that fails shows a banner with a **See logs** link, and there is a
-**Logs** tab in the header. The buffer keeps the last 500 entries with full stack
-traces, and it deliberately survives the failure that produced it, so the detail
-is still there afterwards.
+The **About** tab has **Export backup** and **Import backup**. Export writes a JSON
+file and hands it to the share sheet, so you choose where it goes. Import merges into
+what you already have: nothing is deleted, a link already in the library is not added
+twice, and a playlist that already exists only gains the entries it is missing.
 
-Use **Copy all** to lift the whole buffer out as text, and **Problems only** to
-filter to warnings and errors.
+The same link may appear in as many playlists as you like. That is not treated as a
+duplicate.
 
 ## When something breaks
 
-**Play does nothing at all.** This was a real bug and is fixed. If it recurs, the
-now playing bar shows the reason with a See logs link, and the log holds the full
-trace including which audio stream was chosen.
+**Play does nothing at all.** This was a real bug and is fixed. If it recurs, the now
+playing bar names the reason underneath the transport controls.
 
 
 **A link fails to resolve.** YouTube changes its site regularly and the
@@ -149,10 +148,9 @@ known weak point of running without a server, and is covered in
 Android settings. The foreground service starts either way, but the controls are
 part of the notification.
 
-**Nothing responds after an error.** This should no longer happen. Every screen
-sits inside an error boundary and every action routes through one handler, so a
-failure shows a banner rather than taking the UI down. If you do hit it, the log
-buffer outlives the renderer, so open Logs and copy the trace.
+**Nothing responds after an error.** This should no longer happen. Every screen sits
+inside an error boundary and every action routes through one handler, so a failure
+shows a banner rather than taking the UI down.
 
 **Playback stops when the screen locks.** Some manufacturers, Xiaomi, Oppo,
 OnePlus and Samsung in particular, kill background apps aggressively. Allow the

@@ -1,12 +1,11 @@
 @implements IDisposable
 @inject UiErrorState Errors
 
-@* Every failure surfaces here, always with a way through to the full stack trace. *@
+@* Every failure surfaces here rather than escaping and killing the renderer. *@
 @if (Errors.Message is { } message)
 {
     <div class="error" role="alert">
         <span class="text">@message</span>
-        <a class="logs-link" href="logs">See logs</a>
         <button class="dismiss" title="Dismiss" @onclick="Errors.Clear">✕</button>
     </div>
 }

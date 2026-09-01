@@ -40,14 +40,31 @@ public sealed class PlaylistStore : IPlaylistStore
     }
 
     /// <inheritdoc />
-    public async Task<Playlist> CreateAsync(string name, string? description, CancellationToken cancellationToken)
+    public async Task<Playlist?> CreateAsync(string name, string? description, CancellationToken cancellationToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
 
-        var playlist = new Playlist { Name = name, Description = description };
+        var trimmed = name.Trim();
+        if (await ExistsAsync(db, trimmed, excluding: null, cancellationToken))
+        {
+            return null;
+        }
+
+        var playlist = new Playlist { Name = trimmed, Description = description };
         db.Playlists.Add(playlist);
         await db.SaveChangesAsync(cancellationToken);
         return playlist;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> NameExistsAsync(string name, Guid? excluding, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+        return await ExistsAsync(db, name.Trim(), excluding, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -59,13 +76,15 @@ public sealed class PlaylistStore : IPlaylistStore
     {
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
 
+        var trimmed = name.Trim();
         var playlist = await db.Playlists.FindAsync([playlistId], cancellationToken);
-        if (playlist is null)
+
+        if (playlist is null || await ExistsAsync(db, trimmed, playlistId, cancellationToken))
         {
             return false;
         }
 
-        playlist.Name = name;
+        playlist.Name = trimmed;
         playlist.Description = description;
         playlist.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
@@ -179,6 +198,26 @@ public sealed class PlaylistStore : IPlaylistStore
         playlist.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// True when another playlist already uses the name.
+    /// SQLite compares strings case sensitively by default, so the comparison is done
+    /// on lowercased values rather than relying on the collation.
+    /// </summary>
+    private static async Task<bool> ExistsAsync(
+        LibraryDbContext db,
+        string name,
+        Guid? excluding,
+        CancellationToken cancellationToken)
+    {
+        var lowered = name.ToLowerInvariant();
+
+        return await db.Playlists
+            .AsNoTracking()
+            .AnyAsync(
+                p => p.Name.ToLower() == lowered && (excluding == null || p.Id != excluding),
+                cancellationToken);
     }
 
     /// <summary>Rewrites positions to a dense zero based sequence.</summary>

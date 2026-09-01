@@ -11,10 +11,16 @@ public interface IPlaylistStore
     /// <summary>Returns one playlist with its items and tracks loaded in order, or null when missing.</summary>
     Task<Playlist?> GetAsync(Guid playlistId, CancellationToken cancellationToken);
 
-    /// <summary>Creates a playlist and returns it.</summary>
-    Task<Playlist> CreateAsync(string name, string? description, CancellationToken cancellationToken);
+    /// <summary>
+    /// Creates a playlist and returns it, or null when the name is already taken.
+    /// Names are compared trimmed and case insensitively.
+    /// </summary>
+    Task<Playlist?> CreateAsync(string name, string? description, CancellationToken cancellationToken);
 
-    /// <summary>Renames a playlist. Returns false when it does not exist.</summary>
+    /// <summary>True when a playlist already uses the name, ignoring the excluded one.</summary>
+    Task<bool> NameExistsAsync(string name, Guid? excluding, CancellationToken cancellationToken);
+
+    /// <summary>Renames a playlist. Returns false when it is missing or the name is taken.</summary>
     Task<bool> RenameAsync(Guid playlistId, string name, string? description, CancellationToken cancellationToken);
 
     /// <summary>Deletes a playlist and its membership rows. Returns false when it does not exist.</summary>

@@ -1,5 +1,6 @@
 using LinkAudioPlayer.Abstractions;
 using LinkAudioPlayer.App.Platforms.Android;
+using LinkAudioPlayer.Backup;
 using LinkAudioPlayer.Data;
 using LinkAudioPlayer.Diagnostics;
 using LinkAudioPlayer.Extraction;
@@ -81,6 +82,9 @@ public static class MauiProgram
             options.Directory = Path.Combine(dataDirectory, "media"));
 
         services.AddSingleton<MediaDownloadService>();
+        services.AddScoped<BackupService>();
+        services.AddSingleton<IBackupFileService, AndroidBackupFileService>();
+        services.AddSingleton<IExternalBrowser, AndroidExternalBrowser>();
         services.AddSingleton<IMediaCache, FileSystemMediaCache>();
     }
 

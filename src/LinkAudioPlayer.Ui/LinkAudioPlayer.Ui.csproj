@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LinkAudioPlayer.Diagnostics\LinkAudioPlayer.Diagnostics.csproj" />
+    <ProjectReference Include="..\LinkAudioPlayer.Backup\LinkAudioPlayer.Backup.csproj" />
     <ProjectReference Include="..\LinkAudioPlayer.Library\LinkAudioPlayer.Library.csproj" />
     <ProjectReference Include="..\LinkAudioPlayer.Playback\LinkAudioPlayer.Playback.csproj" />
   </ItemGroup>
