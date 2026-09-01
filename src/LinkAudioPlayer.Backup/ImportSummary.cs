@@ -23,5 +23,10 @@ public sealed class ImportSummary
     public override string ToString() =>
         IsEmpty
             ? "Everything in that backup was already here"
-            : $"Added {TracksAdded} track(s) and {PlaylistEntriesAdded} playlist entr(ies)";
+            : $"Added {Count(TracksAdded, "track", "tracks")} and " +
+              $"{Count(PlaylistEntriesAdded, "playlist entry", "playlist entries")}";
+
+    /// <summary>Pairs a number with the right form of its noun.</summary>
+    private static string Count(int value, string singular, string plural) =>
+        $"{value} {(value == 1 ? singular : plural)}";
 }

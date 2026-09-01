@@ -57,4 +57,5 @@ multi resolution `icon.ico`. Regenerate them with
 ## Author
 
 Built by [StepIntoTheCode](https://github.com/stepintothecode).
+Source: [github.com/stepintothecode/linkaudioplayer](https://github.com/stepintothecode/linkaudioplayer).
 Free, ad free and tracker free. [Support the project](https://stepintothecode.github.io/support/?from=linkaudioplayer-app).

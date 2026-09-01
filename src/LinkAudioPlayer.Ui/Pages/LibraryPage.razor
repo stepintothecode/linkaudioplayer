@@ -6,6 +6,7 @@
 @inject UiErrorState Errors
 @inject ToastService Toasts
 @inject ConfirmService Confirm
+@inject ClipboardService Clipboard
 @inject IJSRuntime Js
 
 <h1 class="visually-hidden">Library</h1>
@@ -68,23 +69,34 @@ else
                     </span>
                 }
                 <img class="art" src="@Artwork(entry.Track)" alt="" loading="lazy" />
-                <div class="meta">
+                <div class="meta tappable" @onclick="() => ToggleLink(entry.Track.Id)">
                     <span class="title">@entry.Track.Title</span>
                     <span class="sub">@(entry.Track.Artist ?? entry.Track.Provider)</span>
                 </div>
                 <button class="icon" title="Play" aria-label="Play"
-                        @onclick="() => PlayFromAsync(index)">
+                        @onclick="() => PlayFromAsync(index)" @onclick:stopPropagation>
                     <Icon Name="play" Size="18" />
                 </button>
                 <button class="icon" title="Save for offline" aria-label="Save for offline"
                         disabled="@(entry.IsDownloaded || _downloading.Contains(entry.Track.Id))"
-                        @onclick="() => DownloadAsync(entry.Track)">
+                        @onclick="() => DownloadAsync(entry.Track)" @onclick:stopPropagation>
                     <Icon Name="download" Size="18" />
                 </button>
                 <button class="icon danger" title="Remove" aria-label="Remove"
-                        @onclick="() => DeleteAsync(entry.Track)">
+                        @onclick="() => DeleteAsync(entry.Track)" @onclick:stopPropagation>
                     <Icon Name="trash" Size="18" />
                 </button>
+
+                @if (_showLinkFor == entry.Track.Id)
+                {
+                    <div class="link-row">
+                        <span class="link-url">@entry.Track.SourceUrl</span>
+                        <button class="link-copy" @onclick="() => CopyAsync(entry.Track)"
+                                @onclick:stopPropagation>
+                            Copy link
+                        </button>
+                    </div>
+                }
             </li>
         }
     </ul>
@@ -99,6 +111,7 @@ else
     private string _url = string.Empty;
     private string _search = string.Empty;
     private string? _downloadNote;
+    private Guid? _showLinkFor;
     private bool _busy;
 
     /// <summary>True when a search is narrowing the list.</summary>
@@ -125,6 +138,17 @@ else
 
     /// <summary>Redraws when the player moves to another track.</summary>
     private void OnPlayerChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>Shows or hides the link for one row. Only one is open at a time.</summary>
+    private void ToggleLink(Guid trackId) =>
+        _showLinkFor = _showLinkFor == trackId ? null : trackId;
+
+    /// <summary>Copies a track's original URL.</summary>
+    private async Task CopyAsync(Track track)
+    {
+        var copied = await Clipboard.CopyAsync(track.SourceUrl);
+        Toasts.Show(copied ? "Link copied" : "Could not copy the link", copied ? "plus" : null);
+    }
 
     /// <summary>Binds the drag handler once the list exists.</summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)

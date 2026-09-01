@@ -117,6 +117,11 @@ the videos you want.
 Both the Library and a playlist reorder by dragging the six dot handle on the left
 of a row. The library keeps its own order, so a track stays where you put it.
 
+## Copying a link
+
+Tap a track's title to reveal the original URL with a **Copy link** button. Tap the
+title again to hide it. The buttons on the row still work normally.
+
 ## Removing things
 
 Deleting a track or a playlist asks first, then leaves an **Undo** in the toast for a

@@ -4,6 +4,7 @@
 @inject TrackLibraryService LibraryService
 @inject PlayerController Player
 @inject UiErrorState Errors
+@inject ClipboardService Clipboard
 @inject IJSRuntime Js
 @inject NavigationManager Nav
 @inject ConfirmService Confirm
@@ -45,18 +46,29 @@ else
                         <Icon Name="grip" Size="18" />
                     </span>
                     <img class="art" src="@Artwork(item.Track)" alt="" loading="lazy" />
-                    <div class="meta">
+                    <div class="meta tappable" @onclick="() => ToggleLink(item.TrackId)">
                         <span class="title">@item.Track?.Title</span>
                         <span class="sub">@(item.Track?.Artist ?? item.Track?.Provider)</span>
                     </div>
                     <button class="icon" title="Play" aria-label="Play"
-                            @onclick="() => PlayFromAsync(index)">
+                            @onclick="() => PlayFromAsync(index)" @onclick:stopPropagation>
                         <Icon Name="play" Size="18" />
                     </button>
                     <button class="icon danger" title="Remove from playlist" aria-label="Remove from playlist"
-                            @onclick="() => RemoveAsync(item)">
+                            @onclick="() => RemoveAsync(item)" @onclick:stopPropagation>
                         <Icon Name="close" Size="18" />
                     </button>
+
+                    @if (_showLinkFor == item.TrackId && item.Track is { } linked)
+                    {
+                        <div class="link-row">
+                            <span class="link-url">@linked.SourceUrl</span>
+                            <button class="link-copy" @onclick="() => CopyAsync(linked)"
+                                    @onclick:stopPropagation>
+                                Copy link
+                            </button>
+                        </div>
+                    }
                 </li>
             }
         </ul>
@@ -97,6 +109,7 @@ else
     private List<PlaylistItem> _items = [];
     private List<LibraryTrack> _available = [];
     private ElementReference _listElement;
+    private Guid? _showLinkFor;
     private DotNetObjectReference<PlaylistDetailPage>? _self;
     private IJSObjectReference? _reorder;
     private bool _loaded;
@@ -109,6 +122,17 @@ else
 
     /// <summary>Redraws when the player moves to another track.</summary>
     private void OnPlayerChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>Shows or hides the link for one row. Only one is open at a time.</summary>
+    private void ToggleLink(Guid trackId) =>
+        _showLinkFor = _showLinkFor == trackId ? null : trackId;
+
+    /// <summary>Copies a track's original URL.</summary>
+    private async Task CopyAsync(Track track)
+    {
+        var copied = await Clipboard.CopyAsync(track.SourceUrl);
+        Toasts.Show(copied ? "Link copied" : "Could not copy the link", copied ? "plus" : null);
+    }
 
     /// <summary>Binds the drag handler once the list exists.</summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
