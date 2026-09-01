@@ -6,6 +6,8 @@
 @inject UiErrorState Errors
 @inject IJSRuntime Js
 @inject NavigationManager Nav
+@inject ConfirmService Confirm
+@inject ToastService Toasts
 
 @if (_playlist is null)
 {
@@ -16,7 +18,7 @@ else
     <div class="page-head">
         <button class="btn round" title="Back to playlists" aria-label="Back to playlists"
                 @onclick='() => Nav.NavigateTo("playlists")'>
-            <span class="glyph">&#8592;</span>
+            <Icon Name="back" Size="20" />
         </button>
         <h1>@_playlist.Name</h1>
     </div>
@@ -40,16 +42,21 @@ else
                 <li @key="item.Id" data-index="@index"
                     class="item @(Player.Current?.Id == item.TrackId ? "playing" : "")">
                     <span class="grip" title="Drag to reorder" aria-label="Reorder">
-                        <span></span><span></span><span></span>
-                        <span></span><span></span><span></span>
+                        <Icon Name="grip" Size="18" />
                     </span>
                     <img class="art" src="@Artwork(item.Track)" alt="" loading="lazy" />
                     <div class="meta">
                         <span class="title">@item.Track?.Title</span>
                         <span class="sub">@(item.Track?.Artist ?? item.Track?.Provider)</span>
                     </div>
-                    <button class="icon" title="Play" @onclick="() => PlayFromAsync(index)">▶</button>
-                    <button class="icon" title="Remove" @onclick="() => RemoveAsync(item.Id)">✕</button>
+                    <button class="icon" title="Play" aria-label="Play"
+                            @onclick="() => PlayFromAsync(index)">
+                        <Icon Name="play" Size="18" />
+                    </button>
+                    <button class="icon danger" title="Remove from playlist" aria-label="Remove from playlist"
+                            @onclick="() => RemoveAsync(item)">
+                        <Icon Name="close" Size="18" />
+                    </button>
                 </li>
             }
         </ul>
@@ -71,7 +78,10 @@ else
                         <span class="title">@entry.Track.Title</span>
                         <span class="sub">@(entry.Track.Artist ?? entry.Track.Provider)</span>
                     </div>
-                    <button class="icon" title="Add" @onclick="() => AddAsync(entry.Track.Id)">+</button>
+                    <button class="icon" title="Add" aria-label="Add"
+                            @onclick="() => AddAsync(entry.Track.Id)">
+                        <Icon Name="plus" Size="18" />
+                    </button>
                 </li>
             }
         </ul>
@@ -158,14 +168,56 @@ else
         await RefreshAsync();
     }
 
-    /// <summary>Removes an entry from this playlist.</summary>
-    private async Task RemoveAsync(Guid itemId)
+    /// <summary>
+    /// Removes one entry, with an undo.
+    /// No confirmation here: this only unlinks a track from a playlist, and the track
+    /// itself stays in the library, so the undo alone is enough of a safety net.
+    /// </summary>
+    private async Task RemoveAsync(PlaylistItem item)
     {
+        var trackId = item.TrackId;
+        var order = _items.Select(i => i.TrackId).ToList();
+
         await Errors.TryAsync(
             "Removing from the playlist",
-            async () => await Playlists.RemoveItemAsync(PlaylistId, itemId, CancellationToken.None));
+            async () => await Playlists.RemoveItemAsync(PlaylistId, item.Id, CancellationToken.None));
 
         await RefreshAsync();
+
+        Toasts.ShowWithAction(
+            $"Removed from {_playlist?.Name}",
+            "Undo",
+            () => UndoRemoveAsync(trackId, order),
+            "close");
+    }
+
+    /// <summary>Puts an entry back at the position it held.</summary>
+    private async Task UndoRemoveAsync(Guid trackId, IReadOnlyList<Guid> orderBefore)
+    {
+        await Errors.TryAsync("Restoring the entry", async () =>
+        {
+            await Playlists.AddTrackAsync(PlaylistId, trackId, CancellationToken.None);
+
+            var playlist = await Playlists.GetAsync(PlaylistId, CancellationToken.None);
+            if (playlist is null)
+            {
+                return;
+            }
+
+            // Re-added at the end, so the captured order is applied to put it back.
+            var itemsByTrack = playlist.Items
+                .GroupBy(i => i.TrackId)
+                .ToDictionary(g => g.Key, g => g.First().Id);
+
+            var ids = orderBefore.Where(itemsByTrack.ContainsKey).Select(id => itemsByTrack[id]).ToList();
+            if (ids.Count == playlist.Items.Count)
+            {
+                await Playlists.ReorderAsync(PlaylistId, ids, CancellationToken.None);
+            }
+        });
+
+        await RefreshAsync();
+        StateHasChanged();
     }
 
     /// <summary>Reloads the playlist and the set of tracks not yet in it.</summary>

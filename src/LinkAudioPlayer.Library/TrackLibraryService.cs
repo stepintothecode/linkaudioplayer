@@ -98,17 +98,35 @@ public sealed class TrackLibraryService
         await _cache.StoreAsync(track.CacheKey, new Uri(track.SourceUrl), progress, cancellationToken);
     }
 
-    /// <summary>Deletes a track and its downloaded audio.</summary>
-    public async Task<bool> DeleteAsync(Guid trackId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Deletes a track, leaving its downloaded audio alone.
+    /// The file is kept so an undo does not force a re-download; orphans are cleared
+    /// by <see cref="PurgeOrphanedDownloadsAsync"/> on the next start.
+    /// </summary>
+    public async Task<bool> DeleteAsync(Guid trackId, CancellationToken cancellationToken) =>
+        await _tracks.DeleteAsync(trackId, cancellationToken);
+
+    /// <summary>Removes cached audio that no track refers to. Returns how many files went.</summary>
+    public async Task<int> PurgeOrphanedDownloadsAsync(CancellationToken cancellationToken)
     {
-        var track = await _tracks.GetAsync(trackId, cancellationToken);
-        if (track is null)
+        var live = (await _tracks.ListAsync(cancellationToken))
+            .Select(track => track.CacheKey)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var removed = 0;
+
+        foreach (var key in _cache.ListKeys())
         {
-            return false;
+            if (live.Contains(key))
+            {
+                continue;
+            }
+
+            _cache.Remove(key);
+            removed++;
         }
 
-        _cache.Remove(track.CacheKey);
-        return await _tracks.DeleteAsync(trackId, cancellationToken);
+        return removed;
     }
 
     /// <summary>Removes downloaded audio but keeps the track in the library.</summary>

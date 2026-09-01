@@ -18,4 +18,7 @@ public interface IMediaCache
 
     /// <summary>Total bytes currently held in the cache.</summary>
     long GetSizeBytes();
+
+    /// <summary>Cache keys currently held, used to find files no track refers to.</summary>
+    IReadOnlyList<string> ListKeys();
 }

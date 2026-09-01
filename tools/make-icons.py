@@ -1,8 +1,8 @@
 """Draws the LinkAudioPlayer mark and writes it at every size the project needs.
 
-The mark is a chain link whose right half opens into a rising equaliser, which is the
-whole app in one shape: a link turning into sound. Everything is drawn at 4x and
-downsampled, which is what keeps the curves clean without an SVG rasteriser.
+The mark is a chain link with a beamed pair of notes sitting inside it: a link that
+holds music, which is what the app does. Everything is drawn at 4x and downsampled,
+which is what keeps the curves clean without an SVG rasteriser.
 """
 
 import os
@@ -34,33 +34,48 @@ def draw_mark(size, transparent=False, inset=0.0):
     def box(x0, y0, x1, y1):
         return [x(x0), x(y0), x(x1), x(y1)]
 
-    stroke = max(2, round(0.08 * span * s))
+    stroke = max(2, round(0.072 * span * s))
 
-    # A closed chain link on the left, kept clear of the bars so both read at 48px.
-    d.rounded_rectangle(
-        box(0.07, 0.335, 0.45, 0.665),
-        radius=(0.165 * span * s),
+    # The link: a tilted rounded rectangle ring, wide enough to hold the notes.
+    ring = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    rd = ImageDraw.Draw(ring)
+    rd.rounded_rectangle(
+        box(0.10, 0.255, 0.90, 0.745),
+        radius=(0.245 * span * s),
         outline=FG,
         width=stroke,
     )
+    ring = ring.rotate(-18, resample=Image.BICUBIC, center=(s / 2, s / 2))
+    img.alpha_composite(ring)
 
-    # Rising then falling equaliser bars, tinted across the accent ramp.
-    bars = [
-        (0.545, 0.26),
-        (0.675, 0.52),
-        (0.805, 0.74),
-        (0.935, 0.40),
-    ]
+    # The notes: two stems under a beam, the shape from the first version of the icon.
+    beam_top, beam_thick = 0.335, 0.075
+    left_stem, right_stem = 0.395, 0.605
+    stem_w = 0.052
 
-    for index, (centre, height) in enumerate(bars):
-        half = 0.038
-        top = 0.5 - height / 2
-        colour = _lerp(FG, FG_DEEP, index / max(len(bars) - 1, 1))
-        d.rounded_rectangle(
-            box(centre - half, top, centre + half, top + height),
-            radius=half * span * s,
-            fill=colour,
-        )
+    d.polygon(
+        [
+            (x(left_stem), x(beam_top + 0.045)),
+            (x(right_stem + stem_w), x(beam_top - 0.045)),
+            (x(right_stem + stem_w), x(beam_top + beam_thick - 0.045)),
+            (x(left_stem), x(beam_top + beam_thick + 0.045)),
+        ],
+        fill=FG_DEEP,
+    )
+
+    d.rounded_rectangle(
+        box(left_stem, beam_top + 0.045, left_stem + stem_w, 0.615),
+        radius=stem_w * span * s / 2,
+        fill=FG_DEEP,
+    )
+    d.rounded_rectangle(
+        box(right_stem, beam_top - 0.045, right_stem + stem_w, 0.545),
+        radius=stem_w * span * s / 2,
+        fill=FG_DEEP,
+    )
+
+    d.ellipse(box(0.315, 0.565, 0.455, 0.675), fill=FG_DEEP)
+    d.ellipse(box(0.525, 0.495, 0.665, 0.605), fill=FG_DEEP)
 
     if SS > 1:
         img = img.resize((size, size), Image.LANCZOS)

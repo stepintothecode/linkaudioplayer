@@ -50,5 +50,7 @@ public sealed class FakeMediaCache : IMediaCache
 
     public void Remove(string cacheKey) => _paths.Remove(cacheKey);
 
+    public IReadOnlyList<string> ListKeys() => [.. _paths.Keys];
+
     public long GetSizeBytes() => _paths.Count;
 }

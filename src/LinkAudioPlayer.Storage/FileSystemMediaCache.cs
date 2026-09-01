@@ -96,6 +96,17 @@ public sealed class FileSystemMediaCache : IMediaCache
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<string> ListKeys() =>
+    [
+        .. Directory
+            .EnumerateFiles(_root)
+            .Where(path => !path.EndsWith(PartialSuffix, StringComparison.OrdinalIgnoreCase))
+            .Select(Path.GetFileNameWithoutExtension)
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal),
+    ];
+
+    /// <inheritdoc />
     public long GetSizeBytes() =>
         Directory
             .EnumerateFiles(_root)

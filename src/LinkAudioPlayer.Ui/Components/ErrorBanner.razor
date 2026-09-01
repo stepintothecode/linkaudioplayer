@@ -6,7 +6,9 @@
 {
     <div class="error" role="alert">
         <span class="text">@message</span>
-        <button class="dismiss" title="Dismiss" @onclick="Errors.Clear">✕</button>
+        <button class="dismiss" title="Dismiss" aria-label="Dismiss" @onclick="Errors.Clear">
+            <Icon Name="close" Size="16" />
+        </button>
     </div>
 }
 

@@ -2,6 +2,8 @@
 @inject IPlaylistStore Playlists
 @inject UiErrorState Errors
 @inject ToastService Toasts
+@inject ConfirmService Confirm
+@inject RemovalService Removal
 
 <h1 class="visually-hidden">Playlists</h1>
 
@@ -13,12 +15,15 @@
 
 @if (_playlists.Count > 0)
 {
-    <div class="row search">
-        <input type="text" inputmode="search" placeholder="Search playlists"
+    <div class="search-field">
+        <Icon Name="search" Size="17" Class="search-glyph" />
+        <input type="text" inputmode="search" placeholder="Search your playlists"
                @bind="_search" @bind:event="oninput" />
         @if (!string.IsNullOrEmpty(_search))
         {
-            <button class="icon" title="Clear search" @onclick='() => _search = string.Empty'>✕</button>
+            <button class="search-clear" title="Clear search" @onclick='() => _search = string.Empty'>
+                <Icon Name="close" Size="15" />
+            </button>
         }
     </div>
 }
@@ -43,7 +48,10 @@ else
                     <a class="title" href="@($"playlists/{playlist.Id}")">@playlist.Name</a>
                     <span class="sub">@playlist.Items.Count track(s)</span>
                 </div>
-                <button class="icon" title="Delete" @onclick="() => DeleteAsync(playlist.Id)">✕</button>
+                <button class="icon danger" title="Delete" aria-label="Delete"
+                        @onclick="() => DeleteAsync(playlist)">
+                    <Icon Name="trash" Size="18" />
+                </button>
             </li>
         }
     </ul>
@@ -97,23 +105,51 @@ else
 
         if (created is null)
         {
-            Toasts.Show($"A playlist called {name} already exists", "⚠");
+            Toasts.Show($"A playlist called {name} already exists");
             return;
         }
 
         _name = string.Empty;
-        Toasts.Show($"Created {created.Name}", "➕");
+        Toasts.Show($"Created {created.Name}", "plus");
         await RefreshAsync();
     }
 
-    /// <summary>Deletes a playlist, leaving its tracks in the library.</summary>
-    private async Task DeleteAsync(Guid id)
+    /// <summary>Confirms, deletes, then offers a few seconds to undo.</summary>
+    private async Task DeleteAsync(Playlist playlist)
     {
+        var confirmed = await Confirm.AskAsync(
+            "Delete this playlist?",
+            $"\"{playlist.Name}\" will be deleted. Its tracks stay in your library.",
+            "Delete");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        RemovedPlaylist? removed = null;
+
         await Errors.TryAsync(
             "Deleting the playlist",
-            async () => await Playlists.DeleteAsync(id, CancellationToken.None));
+            async () => removed = await Removal.RemovePlaylistAsync(playlist.Id, CancellationToken.None));
 
         await RefreshAsync();
+
+        if (removed is { } snapshot)
+        {
+            Toasts.ShowWithAction("Playlist deleted", "Undo", () => UndoAsync(snapshot), "trash");
+        }
+    }
+
+    /// <summary>Recreates a deleted playlist with its tracks in order.</summary>
+    private async Task UndoAsync(RemovedPlaylist removed)
+    {
+        await Errors.TryAsync(
+            "Restoring the playlist",
+            async () => await Removal.RestoreAsync(removed, CancellationToken.None));
+
+        await RefreshAsync();
+        StateHasChanged();
     }
 
     /// <summary>Reloads the playlist list.</summary>

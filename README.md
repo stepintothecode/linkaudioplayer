@@ -48,7 +48,7 @@ itself.
 
 ## Logo
 
-The mark is a chain link followed by an equaliser, which is the app in one shape.
+The mark is a chain link holding a beamed pair of notes: a link that holds music.
 Source images live in [assets/logo/](assets/logo/): square PNGs from 16 to 1024,
 rounded variants, a transparent foreground for the Android adaptive icon, and a
 multi resolution `icon.ico`. Regenerate them with

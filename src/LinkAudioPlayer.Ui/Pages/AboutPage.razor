@@ -27,7 +27,7 @@
     you keep wherever you like.
 </p>
 
-<div class="row wrap">
+<div class="row wrap about-actions">
     <button class="primary" disabled="@_busy" @onclick="ExportAsync">
         @(_busy ? "Working" : "Export backup")
     </button>
@@ -50,29 +50,18 @@
     Everything here is free, ad free and tracker free, and stays that way.
 </p>
 
-<div class="ways">
-    <a class="way" href="@SupportUrl" @onclick="OpenSupportAsync" @onclick:preventDefault>
-        <span class="way-text">
-            <span class="way-name">Support this project</span>
-            <span class="way-note">GitHub Sponsors or Ko-fi</span>
-        </span>
-        <span class="way-chev">&#8250;</span>
+<div class="links">
+    <a class="link-btn" href="@SupportUrl" title="Support this project" aria-label="Support this project"
+       @onclick="OpenSupportAsync" @onclick:preventDefault>
+        <Icon Name="heart" Size="22" />
     </a>
-
-    <a class="way" href="@GitHubUrl" @onclick="OpenGitHubAsync" @onclick:preventDefault>
-        <span class="way-text">
-            <span class="way-name">Source and issues</span>
-            <span class="way-note">github.com/stepintothecode</span>
-        </span>
-        <span class="way-chev">&#8250;</span>
+    <a class="link-btn" href="@GitHubUrl" title="Source and issues" aria-label="Source and issues"
+       @onclick="OpenGitHubAsync" @onclick:preventDefault>
+        <Icon Name="github" Size="22" />
     </a>
-
-    <a class="way" href="@YouTubeUrl" @onclick="OpenYouTubeAsync" @onclick:preventDefault>
-        <span class="way-text">
-            <span class="way-name">See what I build</span>
-            <span class="way-note">youtube.com/@@StepIntoTheCode</span>
-        </span>
-        <span class="way-chev">&#8250;</span>
+    <a class="link-btn youtube" href="@YouTubeUrl" title="YouTube" aria-label="YouTube"
+       @onclick="OpenYouTubeAsync" @onclick:preventDefault>
+        <Icon Name="youtube" Size="22" />
     </a>
 </div>
 
@@ -102,7 +91,7 @@
 
             if (await Files.SaveAsync(json, name, CancellationToken.None))
             {
-                Toasts.Show("Backup ready", "\U0001F4BE");
+                Toasts.Show("Backup ready", "download");
             }
         });
 
@@ -125,7 +114,7 @@
 
             var summary = await Backup.ImportAsync(json, CancellationToken.None);
             _result = summary.ToString();
-            Toasts.Show(summary.IsEmpty ? "Nothing new to add" : "Backup imported", "\U0001F4E5");
+            Toasts.Show(summary.IsEmpty ? "Nothing new to add" : "Backup imported", "plus");
         });
 
         _busy = false;

@@ -55,6 +55,7 @@ public static class MauiProgram
         builder.Services.AddSingleton(store);
         builder.Services.AddSingleton<UiErrorState>();
         builder.Services.AddSingleton<ToastService>();
+        builder.Services.AddSingleton<ConfirmService>();
 
         builder.Logging.AddProvider(new InMemoryLoggerProvider(store));
         builder.Logging.SetMinimumLevel(LogLevel.Information);
@@ -105,6 +106,7 @@ public static class MauiProgram
 
         services.AddSingleton<MediaResolutionService>();
         services.AddScoped<TrackLibraryService>();
+        services.AddScoped<RemovalService>();
     }
 
     /// <summary>Platform audio and the queue controller, both long lived.</summary>
@@ -131,6 +133,17 @@ public static class MauiProgram
             var factory = services.GetRequiredService<IDbContextFactory<LibraryDbContext>>();
             DatabaseInitializer.InitializeAsync(factory).GetAwaiter().GetResult();
             logger.LogInformation("Library ready at {Path}", FileSystem.AppDataDirectory);
+
+            // Removing a track leaves its audio behind so an undo does not force a
+            // re-download. Anything still orphaned by the next start is cleared here.
+            using var scope = services.CreateScope();
+            var library = scope.ServiceProvider.GetRequiredService<TrackLibraryService>();
+            var purged = library.PurgeOrphanedDownloadsAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+            if (purged > 0)
+            {
+                logger.LogInformation("Cleared {Count} orphaned download(s)", purged);
+            }
         }
         catch (Exception ex)
         {

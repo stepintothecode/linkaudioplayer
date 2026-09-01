@@ -7,9 +7,16 @@
     <div class="toast" role="status" @key="message">
         @if (Toasts.Icon is { } icon)
         {
-            <span class="toast-icon">@icon</span>
+            <Icon Name="@icon" Size="17" />
         }
-        <span>@message</span>
+        <span class="toast-text">@message</span>
+        @if (Toasts.ActionLabel is { } label)
+        {
+            <button class="toast-action" @onclick="RunAsync">
+                <Icon Name="undo" Size="15" />
+                @label
+            </button>
+        }
     </div>
 }
 
@@ -19,6 +26,18 @@
 
     /// <summary>Unsubscribes to avoid leaking the handler.</summary>
     public void Dispose() => Toasts.Changed -= OnChanged;
+
+    /// <summary>Runs the toast's action, then dismisses it.</summary>
+    private async Task RunAsync()
+    {
+        var action = Toasts.Action;
+        Toasts.Clear();
+
+        if (action is not null)
+        {
+            await action();
+        }
+    }
 
     /// <summary>Marshals the callback onto the renderer thread.</summary>
     private void OnChanged() => InvokeAsync(StateHasChanged);

@@ -52,24 +52,24 @@
         <div class="transport">
             <button class="btn round @(Player.IsShuffled ? "on" : "")"
                     title="Shuffle" aria-label="Shuffle" @onclick="ToggleShuffle">
-                <span class="glyph">&#128256;</span>
+                <Icon Name="shuffle" Size="19" />
             </button>
             <button class="btn round" title="Previous" aria-label="Previous" @onclick="Player.PreviousAsync">
-                <span class="glyph">&#9198;</span>
+                <Icon Name="previous" Size="20" />
             </button>
             <button class="btn round large accent" title="Play or pause" aria-label="Play or pause"
                     disabled="@Player.IsPreparing" @onclick="Player.TogglePlayPauseAsync">
-                <span class="glyph">@(Player.IsPlaying ? "⏸" : "▶")</span>
+                <Icon Name="@(Player.IsPlaying ? "pause" : "play")" Size="24" />
             </button>
             <button class="btn round" title="Next" aria-label="Next" @onclick="Player.NextAsync">
-                <span class="glyph">&#9197;</span>
+                <Icon Name="next" Size="20" />
             </button>
             <button class="btn round @(Player.Repeat == RepeatMode.Off ? "" : "on")"
                     title="Loop" aria-label="Loop" @onclick="CycleRepeat">
-                <span class="glyph">@(Player.Repeat == RepeatMode.One ? "\U0001F502" : "\U0001F501")</span>
+                <Icon Name="@(Player.Repeat == RepeatMode.One ? "repeat-one" : "repeat")" Size="19" />
             </button>
             <button class="btn round danger" title="Stop" aria-label="Stop" @onclick="StopAsync">
-                <span class="glyph">&#9209;</span>
+                <Icon Name="stop" Size="19" />
             </button>
         </div>
 
@@ -137,7 +137,7 @@
     private void ToggleShuffle()
     {
         Player.ToggleShuffle();
-        Toasts.Show(Player.IsShuffled ? "Shuffle on" : "Shuffle off", "\U0001F500");
+        Toasts.Show(Player.IsShuffled ? "Shuffle on" : "Shuffle off", "shuffle");
     }
 
     /// <summary>Cycles loop mode and names the mode it landed on.</summary>
@@ -147,9 +147,9 @@
 
         var (label, icon) = Player.Repeat switch
         {
-            RepeatMode.All => ("Loop: all tracks", "\U0001F501"),
-            RepeatMode.One => ("Loop: this track", "\U0001F502"),
-            _ => ("Loop off", "\U0001F501"),
+            RepeatMode.All => ("Loop: all tracks", "repeat"),
+            RepeatMode.One => ("Loop: this track", "repeat-one"),
+            _ => ("Loop off", "repeat"),
         };
 
         Toasts.Show(label, icon);
@@ -159,7 +159,7 @@
     private async Task StopAsync()
     {
         await Player.StopAsync();
-        Toasts.Show("Stopped", "⏹");
+        Toasts.Show("Stopped", "stop");
     }
 
     /// <summary>Unsubscribes and releases the marquee module.</summary>

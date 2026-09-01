@@ -438,14 +438,85 @@ button.icon {
   color: var(--danger);
 }
 
-/* Search row, visually secondary to the primary action above it. */
-.row.search {
-  margin-top: 0.6rem;
+/* Search reads as a field, not as another primary input: inset, softer, with the
+   magnifier inside it rather than as a separate button. */
+.search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-top: 0.75rem;
 }
 
-.row.search input {
-  background: var(--surface);
-  font-size: 0.9rem;
+.search-field .search-glyph {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.search-field input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 2.4rem;
+  background: rgb(0 0 0 / 22%);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.search-field input::placeholder {
+  color: var(--muted);
+}
+
+.search-field input:focus {
+  outline: none;
+  border-color: var(--border);
+  background: rgb(0 0 0 / 32%);
+  box-shadow: none;
+}
+
+.search-clear {
+  position: absolute;
+  right: 0.4rem;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-clear:active:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  color: var(--text);
+}
+
+/* Transient note, such as a download starting. */
+.note {
+  margin: 0 0 0.7rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius);
+  background: rgb(168 85 247 / 12%);
+  border: 1px solid rgb(168 85 247 / 28%);
+  color: var(--accent-soft);
+  font-size: 0.82rem;
+}
+
+/* Icons inherit the button's colour, which is the whole point of using SVG. */
+.icon-svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+button.danger,
+.icon.danger {
+  color: var(--danger);
 }
 
 /* Where the queue came from, above the track title. */
@@ -492,6 +563,10 @@ button.icon {
   font-size: 0.9rem;
 }
 
+.about-actions {
+  margin-bottom: 1.1rem;
+}
+
 .about-result {
   margin: 0.75rem 0 0;
   padding: 0.6rem 0.8rem;
@@ -502,51 +577,40 @@ button.icon {
   font-size: 0.86rem;
 }
 
-.ways {
+/* Support links reduced to icons. The words were saying what the icons already do. */
+.links {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
-.way {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  background: linear-gradient(180deg, var(--surface-2), var(--surface));
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: inherit;
-  text-decoration: none;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
-  transition: transform 0.12s ease, border-color 0.15s ease;
-}
-
-.way:active {
-  transform: translateY(2px) scale(0.99);
-  border-color: var(--accent);
-}
-
-.way-text {
+.link-btn {
   flex: 1;
-  min-width: 0;
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--surface-3), var(--surface-2));
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 8%),
+    0 2px 6px rgb(0 0 0 / 35%);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, color 0.15s ease;
 }
 
-.way-name {
-  display: block;
-  font-weight: 600;
+.link-btn:active {
+  transform: translateY(2px) scale(0.97);
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 45%);
 }
 
-.way-note {
-  display: block;
-  color: var(--muted);
-  font-size: 0.8rem;
+.link-btn:first-child {
+  color: var(--accent-soft);
 }
 
-.way-chev {
-  color: var(--muted);
-  font-size: 1.3rem;
-  line-height: 1;
+.link-btn.youtube {
+  color: #f4676b;
 }
 
 .fine {
@@ -766,4 +830,96 @@ button.icon {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Confirm dialog, one per app, mounted in the layout. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgb(5 4 8 / 72%);
+  backdrop-filter: blur(3px);
+  animation: fade-in 0.15s ease;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 380px;
+  padding: 1.2rem;
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 60%);
+  animation: dialog-in 0.18s ease;
+}
+
+.dialog-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.dialog-message {
+  margin: 0 0 1.1rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.dialog-actions button {
+  flex: 1;
+}
+
+.dialog-actions .destructive {
+  background: linear-gradient(180deg, #f4676b, #c0393d);
+  border-color: #c0393d;
+  color: #1a0708;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+
+/* Undo sits inside the toast rather than replacing it. */
+.toast-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 32px;
+  padding: 0.25rem 0.7rem;
+  margin-left: 0.2rem;
+  border-radius: 999px;
+  background: var(--accent);
+  border: none;
+  box-shadow: none;
+  color: #14091f;
+  font-size: 0.8rem;
+  font-weight: 700;
 }

@@ -102,6 +102,18 @@ context matches how the app actually behaves.
 **`PlayerController` is a singleton.** The queue and the audio session have to
 survive navigation between pages.
 
+**Icons are inline SVG, not emoji.** Android renders emoji in their own colours, so
+the shuffle, loop and stop glyphs came out yellow and white whatever the button did.
+An SVG inherits `currentColor`, which lets a button own its icon.
+
+**Removing keeps the audio; startup clears the orphans.** Deleting a track no longer
+deletes its downloaded file, so an undo does not force a re-download. Anything still
+orphaned at the next start is purged by `PurgeOrphanedDownloadsAsync`.
+
+**Undo restores position, not just existence.** `RemovalService` captures the library
+order and the order of every affected playlist before deleting, then reorders after
+re-adding. A safety net that puts a track back in the wrong place is only half a net.
+
 **A backup references tracks by source URL, not by id.** Ids are local, so a file
 restored onto another install would point at nothing. The URL is also the identity
 used to skip a track already in the library.
@@ -195,6 +207,7 @@ touch in an Android web view. `reorder.js` shifts rows visually and reports the
 final move; it never mutates the DOM, because Blazor owns that.
 
 ## Not built
+
 
 - Proper EF migrations. The patch step in `DatabaseInitializer` covers the one
   column added so far; a third or fourth would justify migrations instead.

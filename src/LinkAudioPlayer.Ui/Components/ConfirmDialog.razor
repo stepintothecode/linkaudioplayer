@@ -1,0 +1,32 @@
+@implements IDisposable
+@inject ConfirmService Confirm
+
+@* One dialog for the whole app, mounted in the layout. *@
+@if (Confirm.Request is { } request)
+{
+    <div class="scrim" @onclick="Cancel">
+        <div class="dialog" role="alertdialog" aria-modal="true" @onclick:stopPropagation>
+            <h2 class="dialog-title">@request.Title</h2>
+            <p class="dialog-message">@request.Message</p>
+            <div class="dialog-actions">
+                <button @onclick="Cancel">Cancel</button>
+                <button class="destructive" @onclick="Accept">@request.ConfirmLabel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Subscribes so the dialog appears as soon as one is asked for.</summary>
+    protected override void OnInitialized() => Confirm.Changed += OnChanged;
+
+    /// <summary>Unsubscribes to avoid leaking the handler.</summary>
+    public void Dispose() => Confirm.Changed -= OnChanged;
+
+    private void Accept() => Confirm.Answer(true);
+
+    private void Cancel() => Confirm.Answer(false);
+
+    /// <summary>Marshals the callback onto the renderer thread.</summary>
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+}

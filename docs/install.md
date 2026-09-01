@@ -117,6 +117,15 @@ the videos you want.
 Both the Library and a playlist reorder by dragging the six dot handle on the left
 of a row. The library keeps its own order, so a track stays where you put it.
 
+## Removing things
+
+Deleting a track or a playlist asks first, then leaves an **Undo** in the toast for a
+few seconds. Undo puts it back in the same position, including inside every playlist
+it belonged to.
+
+Removing one entry from a playlist does not ask, since the track stays in the library,
+but it still offers an undo.
+
 ## Backup
 
 The **About** tab has **Export backup** and **Import backup**. Export writes a JSON

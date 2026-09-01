@@ -1,9 +1,11 @@
 @page "/"
 @implements IAsyncDisposable
 @inject TrackLibraryService LibraryService
+@inject RemovalService Removal
 @inject PlayerController Player
 @inject UiErrorState Errors
 @inject ToastService Toasts
+@inject ConfirmService Confirm
 @inject IJSRuntime Js
 
 <h1 class="visually-hidden">Library</h1>
@@ -22,17 +24,25 @@
 
 @if (_tracks.Count > 0)
 {
-    <div class="row search">
-        <input type="text" inputmode="search" placeholder="Search tracks"
+    <div class="search-field">
+        <Icon Name="search" Size="17" Class="search-glyph" />
+        <input type="text" inputmode="search" placeholder="Search your tracks"
                @bind="_search" @bind:event="oninput" />
         @if (!string.IsNullOrEmpty(_search))
         {
-            <button class="icon" title="Clear search" @onclick='() => _search = string.Empty'>✕</button>
+            <button class="search-clear" title="Clear search" @onclick='() => _search = string.Empty'>
+                <Icon Name="close" Size="15" />
+            </button>
         }
     </div>
 }
 
 <h2>Tracks (@Visible.Count@(IsFiltered ? $" of {_tracks.Count}" : ""))</h2>
+
+@if (_downloadNote is { } note)
+{
+    <p class="note">@note</p>
+}
 
 @if (_tracks.Count == 0)
 {
@@ -54,28 +64,27 @@ else
                 @if (!IsFiltered)
                 {
                     <span class="grip" title="Drag to reorder" aria-label="Reorder">
-                        <span></span><span></span><span></span>
-                        <span></span><span></span><span></span>
+                        <Icon Name="grip" Size="18" />
                     </span>
                 }
                 <img class="art" src="@Artwork(entry.Track)" alt="" loading="lazy" />
                 <div class="meta">
                     <span class="title">@entry.Track.Title</span>
-                    <span class="sub">
-                        @(entry.Track.Artist ?? entry.Track.Provider)
-                        @if (entry.IsDownloaded)
-                        {
-                            <span class="badge cached">offline</span>
-                        }
-                    </span>
+                    <span class="sub">@(entry.Track.Artist ?? entry.Track.Provider)</span>
                 </div>
-                <button class="icon" title="Play" @onclick="() => PlayFromAsync(index)">▶</button>
-                <button class="icon" title="Save for offline"
-                        disabled="@(entry.IsDownloaded || _downloading.Contains(entry.Track.Id))"
-                        @onclick="() => DownloadAsync(entry.Track.Id)">
-                    @(_downloading.Contains(entry.Track.Id) ? "…" : "⤓")
+                <button class="icon" title="Play" aria-label="Play"
+                        @onclick="() => PlayFromAsync(index)">
+                    <Icon Name="play" Size="18" />
                 </button>
-                <button class="icon" title="Remove" @onclick="() => DeleteAsync(entry.Track.Id)">✕</button>
+                <button class="icon" title="Save for offline" aria-label="Save for offline"
+                        disabled="@(entry.IsDownloaded || _downloading.Contains(entry.Track.Id))"
+                        @onclick="() => DownloadAsync(entry.Track)">
+                    <Icon Name="download" Size="18" />
+                </button>
+                <button class="icon danger" title="Remove" aria-label="Remove"
+                        @onclick="() => DeleteAsync(entry.Track)">
+                    <Icon Name="trash" Size="18" />
+                </button>
             </li>
         }
     </ul>
@@ -84,11 +93,12 @@ else
 @code {
     private List<LibraryTrack> _tracks = [];
     private readonly HashSet<Guid> _downloading = [];
-    private string _search = string.Empty;
     private ElementReference _listElement;
     private DotNetObjectReference<LibraryPage>? _self;
     private IJSObjectReference? _reorder;
     private string _url = string.Empty;
+    private string _search = string.Empty;
+    private string? _downloadNote;
     private bool _busy;
 
     /// <summary>True when a search is narrowing the list.</summary>
@@ -183,7 +193,7 @@ else
         if (ok)
         {
             _url = string.Empty;
-            Toasts.Show(count == 1 ? "Added 1 track" : $"Added {count} tracks", "➕");
+            Toasts.Show(count == 1 ? "Added 1 track" : $"Added {count} tracks", "plus");
         }
 
         _busy = false;
@@ -196,26 +206,56 @@ else
         async () => await Player.PlayQueueAsync(Visible.Select(t => t.Track), "Library Tracks", index));
 
     /// <summary>Downloads a track so it plays instantly and works offline.</summary>
-    private async Task DownloadAsync(Guid trackId)
+    private async Task DownloadAsync(Track track)
     {
-        _downloading.Add(trackId);
+        _downloading.Add(track.Id);
+        _downloadNote = $"Downloading \"{track.Title}\" in the background so it plays offline.";
 
         await Errors.TryAsync(
             "Downloading the track",
-            async () => await LibraryService.DownloadAsync(trackId, progress: null, CancellationToken.None));
+            async () => await LibraryService.DownloadAsync(track.Id, progress: null, CancellationToken.None));
 
-        _downloading.Remove(trackId);
+        _downloading.Remove(track.Id);
+        _downloadNote = null;
         await RefreshAsync();
     }
 
-    /// <summary>Removes a track and its downloaded audio.</summary>
-    private async Task DeleteAsync(Guid trackId)
+    /// <summary>Confirms, removes, then offers a few seconds to undo.</summary>
+    private async Task DeleteAsync(Track track)
     {
+        var confirmed = await Confirm.AskAsync(
+            "Remove this track?",
+            $"\"{track.Title}\" will be removed from your library and from every playlist it is in.",
+            "Remove");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        RemovedTrack? removed = null;
+
         await Errors.TryAsync(
             "Removing the track",
-            async () => await LibraryService.DeleteAsync(trackId, CancellationToken.None));
+            async () => removed = await Removal.RemoveTrackAsync(track.Id, CancellationToken.None));
 
         await RefreshAsync();
+
+        if (removed is { } snapshot)
+        {
+            Toasts.ShowWithAction("Track removed", "Undo", () => UndoAsync(snapshot), "trash");
+        }
+    }
+
+    /// <summary>Puts a removed track back where it was.</summary>
+    private async Task UndoAsync(RemovedTrack removed)
+    {
+        await Errors.TryAsync(
+            "Restoring the track",
+            async () => await Removal.RestoreAsync(removed, CancellationToken.None));
+
+        await RefreshAsync();
+        StateHasChanged();
     }
 
     /// <summary>Reloads the track list.</summary>
