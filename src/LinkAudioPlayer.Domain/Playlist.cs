@@ -18,6 +18,13 @@ public sealed class Playlist
     /// <summary>When the playlist or its contents last changed.</summary>
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    /// Sort order in the list, ascending, dense from zero.
+    /// A new playlist takes position zero and pushes the rest down, matching how the
+    /// library orders tracks.
+    /// </summary>
+    public int Position { get; set; }
+
     /// <summary>Ordered membership rows.</summary>
     public List<PlaylistItem> Items { get; set; } = [];
 }

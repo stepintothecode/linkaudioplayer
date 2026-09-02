@@ -43,6 +43,7 @@ public sealed class LibraryDbContext : DbContext
             entity.HasKey(p => p.Id);
             entity.Property(p => p.Name).IsRequired();
             entity.Property(p => p.CreatedAt).HasConversion(UtcMilliseconds);
+            entity.HasIndex(p => p.Position);
             entity.Property(p => p.UpdatedAt).HasConversion(UtcMilliseconds);
         });
 

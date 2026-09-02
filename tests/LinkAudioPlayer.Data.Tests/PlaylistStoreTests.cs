@@ -162,6 +162,52 @@ public sealed class PlaylistStoreTests : IAsyncLifetime
         Assert.True(await _store.RenameAsync(second.Id, "Evening", null, ct));
     }
 
+    // Playlists were ordered by name, which left no way to arrange them by hand.
+    [Fact]
+    public async Task A_new_playlist_goes_to_the_top()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _store.CreateAsync("first", null, ct);
+        await _store.CreateAsync("second", null, ct);
+        await _store.CreateAsync("third", null, ct);
+
+        var playlists = await _store.ListAsync(ct);
+
+        Assert.Equal(["third", "second", "first"], playlists.Select(p => p.Name));
+        Assert.Equal([0, 1, 2], playlists.Select(p => p.Position));
+    }
+
+    [Fact]
+    public async Task Reorders_the_playlists_and_renumbers_densely()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        foreach (var name in (string[])["a", "b", "c"])
+        {
+            await _store.CreateAsync(name, null, ct);
+        }
+
+        var current = await _store.ListAsync(ct);
+        var reversed = current.Reverse().Select(p => p.Id).ToList();
+
+        Assert.True(await _store.ReorderPlaylistsAsync(reversed, ct));
+
+        var after = await _store.ListAsync(ct);
+        Assert.Equal(["a", "b", "c"], after.Select(p => p.Name));
+        Assert.Equal([0, 1, 2], after.Select(p => p.Position));
+    }
+
+    [Fact]
+    public async Task Refuses_a_playlist_reorder_that_does_not_name_every_one()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _store.CreateAsync("a", null, ct);
+        await _store.CreateAsync("b", null, ct);
+
+        var partial = (await _store.ListAsync(ct)).Take(1).Select(p => p.Id).ToList();
+
+        Assert.False(await _store.ReorderPlaylistsAsync(partial, ct));
+    }
+
     private async Task<Guid> CreateAsync()
     {
         var playlist = await _store.CreateAsync("List", null, TestContext.Current.CancellationToken);

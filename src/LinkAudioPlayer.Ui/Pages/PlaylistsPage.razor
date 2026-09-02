@@ -1,9 +1,12 @@
 @page "/playlists"
+@implements IAsyncDisposable
 @inject IPlaylistStore Playlists
 @inject UiErrorState Errors
 @inject ToastService Toasts
 @inject ConfirmService Confirm
 @inject RemovalService Removal
+@inject TabMemory Memory
+@inject IJSRuntime Js
 
 <h1 class="visually-hidden">Playlists</h1>
 
@@ -40,10 +43,18 @@ else if (Visible.Count == 0)
 }
 else
 {
-    <ul class="list">
-        @foreach (var playlist in Visible)
+    @* Reordering is disabled while filtering, because positions would be ambiguous. *@
+    <p class="hint">@(IsFiltered ? "Clear the search to reorder." : "Drag the handle to reorder.")</p>
+    <ul class="list @(IsFiltered ? "" : "reorderable")" @ref="_listElement">
+        @foreach (var (playlist, index) in Visible.Select((p, i) => (p, i)))
         {
-            <li class="item" @key="playlist.Id">
+            <li class="item" @key="playlist.Id" data-index="@index">
+                @if (!IsFiltered)
+                {
+                    <span class="grip" title="Drag to reorder" aria-label="Reorder">
+                        <Icon Name="grip" Size="18" />
+                    </span>
+                }
                 <div class="meta">
                     <a class="title" href="@($"playlists/{playlist.Id}")">@playlist.Name</a>
                     <span class="sub">@playlist.Items.Count track(s)</span>
@@ -59,6 +70,9 @@ else
 
 @code {
     private List<Playlist> _playlists = [];
+    private ElementReference _listElement;
+    private DotNetObjectReference<PlaylistsPage>? _self;
+    private IJSObjectReference? _reorder;
     private string _name = string.Empty;
     private string _search = string.Empty;
 
@@ -71,8 +85,70 @@ else
             ? [.. _playlists.Where(p => p.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))]
             : _playlists;
 
-    /// <summary>Loads playlists on first render.</summary>
-    protected override async Task OnInitializedAsync() => await RefreshAsync();
+    /// <summary>Loads playlists, and forgets any playlist that was open.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        Memory.ClosedPlaylist();
+        await RefreshAsync();
+    }
+
+    /// <summary>Binds the drag handler once the list exists.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_playlists.Count == 0 || IsFiltered)
+        {
+            return;
+        }
+
+        await Errors.TryAsync("Enabling drag to reorder", async () =>
+        {
+            _reorder ??= await Js.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/LinkAudioPlayer.Ui/js/reorder.js");
+            _self ??= DotNetObjectReference.Create(this);
+            await _reorder.InvokeVoidAsync("attach", _listElement, _self, nameof(OnReordered));
+        });
+    }
+
+    /// <summary>Called from JavaScript when a drag finishes on a new position.</summary>
+    [JSInvokable]
+    public async Task OnReordered(int from, int to)
+    {
+        if (from == to || from < 0 || from >= _playlists.Count || to < 0 || to >= _playlists.Count)
+        {
+            return;
+        }
+
+        var ids = _playlists.Select(p => p.Id).ToList();
+        var moved = ids[from];
+        ids.RemoveAt(from);
+        ids.Insert(to, moved);
+
+        await Errors.TryAsync(
+            "Reordering the playlists",
+            async () => await Playlists.ReorderPlaylistsAsync(ids, CancellationToken.None));
+
+        await RefreshAsync();
+        StateHasChanged();
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_reorder is not null)
+        {
+            try
+            {
+                await _reorder.InvokeVoidAsync("detach", _listElement);
+                await _reorder.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The web view is already gone.
+            }
+        }
+
+        _self?.Dispose();
+    }
 
     /// <summary>Creates on Enter, so the keyboard alone is enough.</summary>
     private async Task OnKeyDown(KeyboardEventArgs args)

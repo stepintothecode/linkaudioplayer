@@ -115,8 +115,12 @@ the videos you want.
 
 ## Reordering
 
-Both the Library and a playlist reorder by dragging the six dot handle on the left
-of a row. The library keeps its own order, so a track stays where you put it.
+The library, a playlist's tracks, and the playlist list itself all reorder by dragging
+the six dot handle on the left of a row. Each keeps its own order, so things stay where
+you put them.
+
+Clear the search first. Reordering is disabled while a filter is on, since a position
+in a filtered view has no unambiguous meaning.
 
 ## Moving between tabs
 
@@ -124,7 +128,8 @@ Swipe left or right anywhere on the page to move between Library, Playlists and
 About. The tabs at the top still work the same way.
 
 Inside a playlist, swiping right goes back to the playlist list and swiping left
-continues to About. A swipe that starts on a drag handle, the scrubber or a text field
+continues to About. Returning to the Playlists tab reopens the playlist you had open,
+until you go back to the list yourself. A swipe that starts on a drag handle, the scrubber or a text field
 is ignored.
 
 ## Reordering while something plays

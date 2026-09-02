@@ -9,6 +9,7 @@
 @inject NavigationManager Nav
 @inject ConfirmService Confirm
 @inject ToastService Toasts
+@inject TabMemory Memory
 
 @if (_playlist is null)
 {
@@ -252,10 +253,15 @@ else
 
         if (_playlist is null)
         {
+            // Deleted while it was remembered. Forgetting it stops the tab reopening
+            // a playlist that is no longer there.
+            Memory.ClosedPlaylist();
             _items = [];
             _available = [];
             return;
         }
+
+        Memory.OpenedPlaylist(PlaylistId);
 
         _items = [.. _playlist.Items.OrderBy(i => i.Position)];
 

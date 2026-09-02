@@ -103,7 +103,9 @@ public sealed class BackupService
             summary.TracksAdded++;
         }
 
-        foreach (var entry in document.Playlists)
+        // Oldest first, so the newest ends up at the top of the list, the same way
+        // the track pass works.
+        foreach (var entry in Enumerable.Reverse(document.Playlists))
         {
             cancellationToken.ThrowIfCancellationRequested();
             await ImportPlaylistAsync(entry, byUrl, summary, cancellationToken);

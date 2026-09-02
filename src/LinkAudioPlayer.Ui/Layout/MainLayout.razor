@@ -2,6 +2,7 @@
 @implements IAsyncDisposable
 @inject UiErrorState Errors
 @inject NavigationManager Nav
+@inject TabMemory Memory
 @inject IJSRuntime Js
 
 @* The boundary matters: without it one thrown exception tears down the renderer and
@@ -10,7 +11,8 @@
     <h1>LinkAudioPlayer</h1>
     <nav>
         <NavLink href="" Match="NavLinkMatch.All" ActiveClass="active">Library</NavLink>
-        <NavLink href="playlists" ActiveClass="active">Playlists</NavLink>
+        <a href="@Memory.Resolve("playlists")"
+           class="@(TabNavigation.IndexOf(_path) == 1 ? "active" : "")">Playlists</a>
         <NavLink href="about" ActiveClass="active">About</NavLink>
     </nav>
 </header>
@@ -110,7 +112,10 @@
     {
         if (TabNavigation.Next(CurrentPath(), direction) is { } route)
         {
-            Nav.NavigateTo(route);
+            // Swiping onto the playlists tab lands on the playlist you had open,
+            // matching what tapping the tab does. Swiping back out of one does not,
+            // since that would put you straight back where you came from.
+            Nav.NavigateTo(direction > 0 ? Memory.Resolve(route) : route);
         }
     }
 

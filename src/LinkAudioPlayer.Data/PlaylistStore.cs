@@ -23,7 +23,8 @@ public sealed class PlaylistStore : IPlaylistStore
         return await db.Playlists
             .AsNoTracking()
             .Include(p => p.Items)
-            .OrderBy(p => p.Name)
+            .OrderBy(p => p.Position)
+            .ThenBy(p => p.Name)
             .ToListAsync(cancellationToken);
     }
 
@@ -52,7 +53,12 @@ public sealed class PlaylistStore : IPlaylistStore
             return null;
         }
 
-        var playlist = new Playlist { Name = trimmed, Description = description };
+        // One statement, so creating stays cheap however many playlists there are.
+        await db.Playlists.ExecuteUpdateAsync(
+            setters => setters.SetProperty(p => p.Position, p => p.Position + 1),
+            cancellationToken);
+
+        var playlist = new Playlist { Name = trimmed, Description = description, Position = 0 };
         db.Playlists.Add(playlist);
         await db.SaveChangesAsync(cancellationToken);
         return playlist;
@@ -196,6 +202,32 @@ public sealed class PlaylistStore : IPlaylistStore
         }
 
         playlist.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ReorderPlaylistsAsync(
+        IReadOnlyList<Guid> playlistIdsInOrder,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(playlistIdsInOrder);
+
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+        var playlists = await db.Playlists.ToListAsync(cancellationToken);
+
+        // Ignore the request unless it names exactly the playlists that exist.
+        var known = playlists.Select(p => p.Id).ToHashSet();
+        if (playlistIdsInOrder.Count != known.Count || !playlistIdsInOrder.All(known.Contains))
+        {
+            return false;
+        }
+
+        for (var position = 0; position < playlistIdsInOrder.Count; position++)
+        {
+            playlists.First(p => p.Id == playlistIdsInOrder[position]).Position = position;
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }

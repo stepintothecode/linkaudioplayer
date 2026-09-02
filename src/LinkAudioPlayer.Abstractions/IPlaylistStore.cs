@@ -34,4 +34,7 @@ public interface IPlaylistStore
 
     /// <summary>Reorders a playlist to match the supplied item order.</summary>
     Task<bool> ReorderAsync(Guid playlistId, IReadOnlyList<Guid> itemIdsInOrder, CancellationToken cancellationToken);
+
+    /// <summary>Reorders the playlists themselves. Returns false on a mismatch.</summary>
+    Task<bool> ReorderPlaylistsAsync(IReadOnlyList<Guid> playlistIdsInOrder, CancellationToken cancellationToken);
 }

@@ -20,12 +20,11 @@
     phone. No account, no ads, no tracking.
 </p>
 
-<div class="row">
-    <button @onclick="() => _help = true">
-        <Icon Name="info" Size="18" />
-        How it works
-    </button>
-</div>
+<button class="wide" @onclick="() => _help = true">
+    <span class="wide-icon"><Icon Name="info" Size="19" /></span>
+    <span class="wide-text">How it works</span>
+    <span class="wide-chev"><Icon Name="chevron" Size="18" /></span>
+</button>
 
 <HelpDialog @bind-Visible="_help" />
 

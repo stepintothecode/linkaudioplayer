@@ -56,6 +56,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<UiErrorState>();
         builder.Services.AddSingleton<ToastService>();
         builder.Services.AddSingleton<ConfirmService>();
+        builder.Services.AddSingleton<TabMemory>();
         builder.Services.AddScoped<ClipboardService>();
 
         builder.Logging.AddProvider(new InMemoryLoggerProvider(store));

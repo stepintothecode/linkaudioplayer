@@ -102,6 +102,12 @@ context matches how the app actually behaves.
 **`PlayerController` is a singleton.** The queue and the audio session have to
 survive navigation between pages.
 
+**A tab remembers where you were inside it.** `TabMemory` holds the playlist last
+opened, so tapping or swiping onto the playlists tab returns to it rather than the
+list. Seeing the list clears it, and so does opening a playlist that no longer exists,
+which stops the tab reopening something deleted. Swiping back out of a playlist
+deliberately ignores the memory, or it would put you straight back where you came from.
+
 **One icon, generated once.** The app icon and the in app mark both come from
 `tools/make-icons.py`. A hand written SVG copy drifted out of step, tilting the other
 way because Pillow rotates counter clockwise for a positive angle and SVG rotates
@@ -201,7 +207,14 @@ every retry.
 
 **Schema changes need a patch step.** `EnsureCreated` only builds a schema from
 nothing, so an app updated in place keeps its old table. `DatabaseInitializer`
-checks `PRAGMA table_info` and adds missing columns and indexes.
+checks `PRAGMA table_info` and adds missing columns and indexes. Its SQL is written
+out per table rather than built from a name, because interpolating an identifier into
+DDL is how injection gets in even when the value is ours.
+
+**Both lists carry their own order.** Tracks and playlists each have a `Position`
+column, dense from zero, with a new row taking zero and pushing the rest down. A
+backup therefore imports playlists oldest first, or the file's order would come out
+reversed.
 
 **`android:icon` must be declared in the manifest.** The generated mipmap resources
 are packaged regardless, but without the attribute the launcher shows the default

@@ -27,31 +27,59 @@ public static class DatabaseInitializer
     /// </summary>
     private static async Task AddMissingColumnsAsync(LibraryDbContext db, CancellationToken cancellationToken)
     {
-        if (await ColumnExistsAsync(db, "Tracks", "Position", cancellationToken))
+        // The SQL is written out per table rather than built from a name. Interpolating
+        // an identifier into DDL is how injection gets in, even when the value is ours.
+        if (!await ColumnExistsAsync(db, "Tracks", "Position", cancellationToken))
         {
-            return;
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                ALTER TABLE "Tracks" ADD COLUMN "Position" INTEGER NOT NULL DEFAULT 0;
+                """,
+                cancellationToken);
+
+            // Tracks were listed newest first.
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                UPDATE "Tracks"
+                SET "Position" = (
+                    SELECT COUNT(*) FROM "Tracks" AS "other"
+                    WHERE "other"."AddedAt" > "Tracks"."AddedAt"
+                );
+                """,
+                cancellationToken);
+
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                CREATE INDEX IF NOT EXISTS "IX_Tracks_Position" ON "Tracks" ("Position");
+                """,
+                cancellationToken);
         }
 
-        await db.Database.ExecuteSqlRawAsync(
-            "ALTER TABLE \"Tracks\" ADD COLUMN \"Position\" INTEGER NOT NULL DEFAULT 0;",
-            cancellationToken);
+        if (!await ColumnExistsAsync(db, "Playlists", "Position", cancellationToken))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                ALTER TABLE "Playlists" ADD COLUMN "Position" INTEGER NOT NULL DEFAULT 0;
+                """,
+                cancellationToken);
 
-        // Existing rows all share position zero, so seed them from the order they
-        // were previously shown in, newest first.
-        await db.Database.ExecuteSqlRawAsync(
-            """
-            UPDATE "Tracks"
-            SET "Position" = (
-                SELECT COUNT(*) FROM "Tracks" AS "other"
-                WHERE "other"."AddedAt" > "Tracks"."AddedAt"
-            );
-            """,
-            cancellationToken);
+            // Playlists were listed by name.
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                UPDATE "Playlists"
+                SET "Position" = (
+                    SELECT COUNT(*) FROM "Playlists" AS "other"
+                    WHERE "other"."Name" < "Playlists"."Name"
+                );
+                """,
+                cancellationToken);
 
-        // EnsureCreated skipped the index because the table already existed.
-        await db.Database.ExecuteSqlRawAsync(
-            "CREATE INDEX IF NOT EXISTS \"IX_Tracks_Position\" ON \"Tracks\" (\"Position\");",
-            cancellationToken);
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                CREATE INDEX IF NOT EXISTS "IX_Playlists_Position" ON "Playlists" ("Position");
+                """,
+                cancellationToken);
+        }
     }
 
     /// <summary>True when the table already has the column.</summary>
