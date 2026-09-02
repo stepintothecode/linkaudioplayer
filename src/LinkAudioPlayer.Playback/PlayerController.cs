@@ -102,6 +102,39 @@ public sealed class PlayerController : IAsyncDisposable
     }
 
     /// <summary>
+    /// Re-points the queue at an edited list, without interrupting playback.
+    /// Reordering a playlist has to change what plays next, or the queue keeps the
+    /// shape it had when it started and the edit looks ignored.
+    /// </summary>
+    /// <param name="tracks">The list as it now stands.</param>
+    /// <param name="queueName">Which queue this is. A different one is left alone.</param>
+    public void SyncQueue(IEnumerable<Track> tracks, string queueName)
+    {
+        ArgumentNullException.ThrowIfNull(tracks);
+
+        if (QueueName != queueName || Current is not { } playing)
+        {
+            return;
+        }
+
+        var updated = tracks.ToList();
+        var index = updated.FindIndex(track => track.Id == playing.Id);
+
+        // The playing track is no longer in the list, which happens when it was the
+        // one removed. Leaving the queue alone lets it finish rather than cutting out.
+        if (index < 0)
+        {
+            return;
+        }
+
+        _queue.Clear();
+        _queue.AddRange(updated);
+        BuildOrder(index);
+
+        StateChanged?.Invoke();
+    }
+
+    /// <summary>
     /// Turns shuffle on or off, keeping the current track playing either way.
     /// Turning it on shuffles what is left; turning it off restores the queue order
     /// and resumes from wherever the current track sits in it.

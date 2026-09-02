@@ -359,6 +359,70 @@ public sealed class PlayerControllerTests : IAsyncDisposable
         Assert.Null(_controller.QueueName);
     }
 
+    // Reordering a playlist used to leave the running queue in its original shape,
+    // so the edit looked ignored until playback was restarted.
+    [Fact]
+    public async Task Reordering_the_source_list_changes_what_plays_next()
+    {
+        var tracks = Tracks(3);
+        await _controller.PlayQueueAsync(tracks, "Focus");
+
+        // Move the last track to sit right after the one playing.
+        var reordered = new List<Track> { tracks[0], tracks[2], tracks[1] };
+        _controller.SyncQueue(reordered, "Focus");
+
+        await _controller.NextAsync();
+
+        Assert.Same(tracks[2], _controller.Current);
+    }
+
+    [Fact]
+    public async Task Syncing_keeps_the_current_track_playing()
+    {
+        var tracks = Tracks(4);
+        await _controller.PlayQueueAsync(tracks, "Focus", startIndex: 2);
+        var playing = _controller.Current;
+
+        _controller.SyncQueue(tracks.AsEnumerable().Reverse().ToList(), "Focus");
+
+        Assert.Same(playing, _controller.Current);
+    }
+
+    [Fact]
+    public async Task Syncing_a_different_queue_is_ignored()
+    {
+        var tracks = Tracks(3);
+        await _controller.PlayQueueAsync(tracks, "Focus");
+
+        _controller.SyncQueue(Tracks(2), "Library Tracks");
+
+        Assert.Equal(3, _controller.Queue.Count);
+    }
+
+    // Happens when the playing track is the one removed. Cutting playback off there
+    // would be worse than letting it finish.
+    [Fact]
+    public async Task Syncing_a_list_without_the_playing_track_leaves_the_queue_alone()
+    {
+        var tracks = Tracks(3);
+        await _controller.PlayQueueAsync(tracks, "Focus", startIndex: 1);
+        var playing = _controller.Current;
+
+        _controller.SyncQueue(tracks.Where(t => t.Id != playing!.Id).ToList(), "Focus");
+
+        Assert.Equal(3, _controller.Queue.Count);
+        Assert.Same(playing, _controller.Current);
+    }
+
+    [Fact]
+    public async Task Syncing_with_nothing_playing_does_nothing()
+    {
+        _controller.SyncQueue(Tracks(3), "Focus");
+
+        Assert.Empty(_controller.Queue);
+        await Task.CompletedTask;
+    }
+
     private static List<Track> Tracks(int count) =>
         [.. Enumerable.Range(0, count).Select(i => new Track
         {

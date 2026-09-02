@@ -283,9 +283,13 @@ else
     }
 
     /// <summary>Reloads the track list.</summary>
-    private async Task RefreshAsync() => await Errors.TryAsync(
-        "Loading the library",
-        async () => _tracks = [.. await LibraryService.ListAsync(CancellationToken.None)]);
+    private async Task RefreshAsync() => await Errors.TryAsync("Loading the library", async () =>
+    {
+        _tracks = [.. await LibraryService.ListAsync(CancellationToken.None)];
+
+        // Keeps a queue started from the library in step with a reorder or removal.
+        Player.SyncQueue(_tracks.Select(t => t.Track), "Library Tracks");
+    });
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
@@ -310,5 +314,5 @@ else
 
     /// <summary>Falls back to the app icon when a track has no artwork.</summary>
     private static string Artwork(Track track) =>
-        track.ThumbnailUrl ?? "_content/LinkAudioPlayer.Ui/icon.svg";
+        track.ThumbnailUrl ?? "_content/LinkAudioPlayer.Ui/icon.png";
 }

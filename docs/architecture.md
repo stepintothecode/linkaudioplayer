@@ -102,6 +102,11 @@ context matches how the app actually behaves.
 **`PlayerController` is a singleton.** The queue and the audio session have to
 survive navigation between pages.
 
+**One icon, generated once.** The app icon and the in app mark both come from
+`tools/make-icons.py`. A hand written SVG copy drifted out of step, tilting the other
+way because Pillow rotates counter clockwise for a positive angle and SVG rotates
+clockwise. The generated PNG is now the only source.
+
 **Icons are inline SVG, not emoji.** Android renders emoji in their own colours, so
 the shuffle, loop and stop glyphs came out yellow and white whatever the button did.
 An SVG inherits `currentColor`, which lets a button own its icon.
@@ -208,6 +213,19 @@ untouched. It uses touch events rather than pointer events because `reorder.js`
 captures the pointer on the grip, and sharing that stream invites conflicts. The
 routing arithmetic lives in `TabNavigation` so the edge cases are testable without a
 device.
+
+**A drilled in page pops back rather than jumping out.** Swiping back inside a
+playlist returns to the playlist list, matching the back button on that screen, while
+swiping forward continues to the next tab. `TabNavigation` ranks every route on one
+line, a tab at a multiple of ten and a page below it just after, so a slide direction
+always has an answer.
+
+**The queue follows edits to the list it came from.** `PlayerController.SyncQueue`
+re-points the queue at an edited list without interrupting playback, so reordering a
+playlist changes what plays next. Without it the queue kept the shape it had when
+playback started and the edit looked ignored. A sync naming a different queue is
+dropped, and one whose list no longer holds the playing track leaves the queue alone,
+which is what happens when the playing track is the one removed.
 
 **The swipe ignore list is short on purpose.** It covers only what owns a horizontal
 drag: inputs, the reorder grip, the scrubber and the player bar. Buttons and links

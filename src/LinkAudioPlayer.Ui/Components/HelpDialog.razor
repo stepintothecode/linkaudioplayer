@@ -1,0 +1,68 @@
+@* Short answers to the things the interface cannot say for itself. *@
+@if (Visible)
+{
+    <div class="scrim" @onclick="Close">
+        <div class="dialog help" role="dialog" aria-modal="true" @onclick:stopPropagation>
+            <h2 class="dialog-title">How it works</h2>
+
+            <dl class="help-list">
+                <dt>Adding</dt>
+                <dd>
+                    Paste a YouTube video link to add one track, or a playlist link to add
+                    every video in it. Mix links cannot be added, because YouTube builds
+                    those per viewer rather than publishing them.
+                </dd>
+
+                <dt>Shuffle and loop</dt>
+                <dd>
+                    Shuffle plays the queue in a random order and stops after the last
+                    track. Turn <strong>Loop</strong> on as well to keep going round.
+                    Loop on its own repeats the queue in order, and pressing it again
+                    repeats only the current track.
+                </dd>
+
+                <dt>Reordering</dt>
+                <dd>
+                    Drag the handle on the left of a row. If that list is what is playing,
+                    the queue follows the new order straight away. Clear the search first,
+                    since positions cannot be judged against a filtered list.
+                </dd>
+
+                <dt>Offline</dt>
+                <dd>
+                    The download button saves a track to the device so it plays without a
+                    connection and starts instantly. Playing a track that is not saved
+                    downloads it first.
+                </dd>
+
+                <dt>Getting around</dt>
+                <dd>
+                    Swipe left or right to move between tabs. Inside a playlist, swiping
+                    right goes back to the list. Tap a track's title to copy its link.
+                </dd>
+
+                <dt>Your data</dt>
+                <dd>
+                    Everything stays on this phone. Export a backup before changing devices,
+                    since nothing is stored anywhere else.
+                </dd>
+            </dl>
+
+            <div class="dialog-actions">
+                <button class="primary" @onclick="Close">Got it</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Whether the dialog is showing.</summary>
+    [Parameter]
+    public bool Visible { get; set; }
+
+    /// <summary>Raised when the dialog asks to close. Bound with @bind-Visible.</summary>
+    [Parameter]
+    public EventCallback<bool> VisibleChanged { get; set; }
+
+    private async Task Close() => await VisibleChanged.InvokeAsync(false);
+}

@@ -259,6 +259,9 @@ else
 
         _items = [.. _playlist.Items.OrderBy(i => i.Position)];
 
+        // Keeps a queue started from this playlist in step with an edit.
+        Player.SyncQueue(_items.Select(i => i.Track).OfType<Track>(), _playlist.Name);
+
         var present = _items.Select(i => i.TrackId).ToHashSet();
         var library = await LibraryService.ListAsync(CancellationToken.None);
         _available = [.. library.Where(t => !present.Contains(t.Track.Id))];
@@ -287,5 +290,5 @@ else
 
     /// <summary>Falls back to the app icon when a track has no artwork.</summary>
     private static string Artwork(Track? track) =>
-        track?.ThumbnailUrl ?? "_content/LinkAudioPlayer.Ui/icon.svg";
+        track?.ThumbnailUrl ?? "_content/LinkAudioPlayer.Ui/icon.png";
 }

@@ -7,6 +7,8 @@ namespace LinkAudioPlayer.Ui.Tests;
 // sub page, where it would otherwise compete with the system back gesture.
 public sealed class TabNavigationTests
 {
+    private const string Detail = "playlists/0199b0d2-1234-7000-8000-000000000000";
+
     [Theory]
     [InlineData("", "playlists")]
     [InlineData("playlists", "about")]
@@ -27,11 +29,20 @@ public sealed class TabNavigationTests
     public void Swiping_before_the_first_tab_does_nothing() =>
         Assert.Null(TabNavigation.Next("", -1));
 
-    // A playlist page is not a tab. Swiping there must be inert.
+    // Inside a playlist, swiping back returns to the list rather than skipping past
+    // it to the library, which is what the back button on that screen does too.
+    [Fact]
+    public void Swiping_back_out_of_a_playlist_returns_to_the_list() =>
+        Assert.Equal("playlists", TabNavigation.Next(Detail, -1));
+
+    [Fact]
+    public void Swiping_forward_out_of_a_playlist_moves_to_the_next_tab() =>
+        Assert.Equal("about", TabNavigation.Next(Detail, 1));
+
     [Theory]
-    [InlineData("playlists/0199b0d2-1234-7000-8000-000000000000")]
     [InlineData("something-else")]
-    public void Swiping_on_a_sub_page_does_nothing(string path)
+    [InlineData("nowhere/deep")]
+    public void Swiping_on_an_unknown_route_does_nothing(string path)
     {
         Assert.Null(TabNavigation.Next(path, 1));
         Assert.Null(TabNavigation.Next(path, -1));
@@ -56,11 +67,17 @@ public sealed class TabNavigationTests
     public void Staying_put_does_not_slide() =>
         Assert.Equal(string.Empty, TabNavigation.SlideClass("playlists", "playlists"));
 
-    [Theory]
-    [InlineData("playlists", "playlists/0199b0d2-1234-7000-8000-000000000000")]
-    [InlineData("playlists/0199b0d2-1234-7000-8000-000000000000", "playlists")]
-    public void Moving_to_or_from_a_sub_page_does_not_slide(string from, string to) =>
-        Assert.Equal(string.Empty, TabNavigation.SlideClass(from, to));
+    [Fact]
+    public void Opening_a_playlist_slides_forward() =>
+        Assert.Equal("from-right", TabNavigation.SlideClass("playlists", Detail));
+
+    [Fact]
+    public void Leaving_a_playlist_slides_back() =>
+        Assert.Equal("from-left", TabNavigation.SlideClass(Detail, "playlists"));
+
+    [Fact]
+    public void Moving_from_a_playlist_to_a_later_tab_slides_forward() =>
+        Assert.Equal("from-right", TabNavigation.SlideClass(Detail, "about"));
 
     [Theory]
     [InlineData("/playlists/", "playlists")]
@@ -76,11 +93,14 @@ public sealed class TabNavigationTests
     public void Reports_where_a_tab_sits(string path, int expected) =>
         Assert.Equal(expected, TabNavigation.IndexOf(path));
 
-    // The position is what lets a swipe at either end resist rather than slide
-    // towards a tab that is not there.
+    // A drilled in page reports its parent, so the ends of the strip still resist.
     [Fact]
-    public void A_sub_page_has_no_position() =>
-        Assert.Equal(-1, TabNavigation.IndexOf("playlists/0199b0d2-1234-7000-8000-000000000000"));
+    public void A_playlist_page_reports_its_parent_tab() =>
+        Assert.Equal(1, TabNavigation.IndexOf(Detail));
+
+    [Fact]
+    public void An_unknown_route_has_no_position() =>
+        Assert.Equal(-1, TabNavigation.IndexOf("nowhere"));
 
     [Fact]
     public void Count_matches_the_tab_strip() =>

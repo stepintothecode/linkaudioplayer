@@ -101,7 +101,8 @@ library and add them again.
 
 - **Loop** cycles off, all tracks, this track. Each press names the mode it landed on.
 - **Shuffle** plays the queue in a random order without interrupting the current track.
-  Turning it off returns to the queue order from wherever you are.
+  Turning it off returns to the queue order from wherever you are. Shuffle stops after
+  the last track, so turn **Loop** on as well to keep going round.
 - **Stop** clears the queue and hides the player.
 
 ## Adding links
@@ -122,9 +123,14 @@ of a row. The library keeps its own order, so a track stays where you put it.
 Swipe left or right anywhere on the page to move between Library, Playlists and
 About. The tabs at the top still work the same way.
 
-Swiping does nothing on a playlist page, so it never competes with the system back
-gesture, and a swipe that starts on a drag handle, the scrubber or a text field is
-ignored.
+Inside a playlist, swiping right goes back to the playlist list and swiping left
+continues to About. A swipe that starts on a drag handle, the scrubber or a text field
+is ignored.
+
+## Reordering while something plays
+
+If the list you reorder is the one playing, the queue follows the new order straight
+away rather than finishing in its original shape.
 
 ## Copying a link
 

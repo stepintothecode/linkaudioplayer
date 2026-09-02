@@ -1,9 +1,9 @@
 namespace LinkAudioPlayer.Ui.Services;
 
 /// <summary>
-/// Works out which tab a swipe lands on, and which way a page should slide in.
+/// Works out which route a swipe lands on, and which way a page should slide in.
 /// Kept out of the layout so the edge cases can be tested: the ends of the strip,
-/// and sub pages such as a playlist, which must not move at all.
+/// and a drilled in page such as a playlist, which pops back rather than jumping out.
 /// </summary>
 public static class TabNavigation
 {
@@ -13,17 +13,42 @@ public static class TabNavigation
     /// <summary>How many tabs there are.</summary>
     public static int Count => Tabs.Length;
 
-    /// <summary>Position of a route in the strip, or -1 when it is not a tab.</summary>
-    public static int IndexOf(string path) => Array.IndexOf(Tabs, Normalise(path));
+    /// <summary>
+    /// Position of a route in the strip, or -1 when it belongs to no tab.
+    /// A page below a tab reports its parent, so the ends of the strip still resist.
+    /// </summary>
+    public static int IndexOf(string path)
+    {
+        var normalised = Normalise(path);
+
+        var exact = Array.IndexOf(Tabs, normalised);
+        if (exact >= 0)
+        {
+            return exact;
+        }
+
+        var parent = ParentOf(normalised);
+        return parent is null ? -1 : Array.IndexOf(Tabs, parent);
+    }
 
     /// <summary>
     /// Returns the route a swipe should land on, or null when it should do nothing.
+    /// Swiping back out of a drilled in page returns to its tab rather than skipping
+    /// past it, so the gesture matches the back button already on that screen.
     /// </summary>
     /// <param name="currentPath">Current route, relative and trimmed of slashes.</param>
     /// <param name="direction">1 to move forward through the tabs, -1 to move back.</param>
     public static string? Next(string currentPath, int direction)
     {
-        var index = IndexOf(currentPath);
+        var normalised = Normalise(currentPath);
+        var parent = ParentOf(normalised);
+
+        if (parent is not null && direction < 0)
+        {
+            return parent;
+        }
+
+        var index = IndexOf(normalised);
         if (index < 0)
         {
             return null;
@@ -35,12 +60,12 @@ public static class TabNavigation
 
     /// <summary>
     /// Returns the CSS class for the entry animation, or an empty string for none.
-    /// Only movement between two tabs slides; anything involving a sub page appears.
+    /// Depth counts, so leaving a playlist slides the same way as moving a tab left.
     /// </summary>
     public static string SlideClass(string fromPath, string toPath)
     {
-        var from = IndexOf(fromPath);
-        var to = IndexOf(toPath);
+        var from = Rank(fromPath);
+        var to = Rank(toPath);
 
         if (from < 0 || to < 0 || from == to)
         {
@@ -59,5 +84,35 @@ public static class TabNavigation
         var trimmed = cut >= 0 ? path[..cut] : path;
 
         return trimmed.Trim('/');
+    }
+
+    /// <summary>The tab a drilled in route sits under, or null when it is a tab itself.</summary>
+    private static string? ParentOf(string normalised)
+    {
+        if (normalised.Length == 0 || Array.IndexOf(Tabs, normalised) >= 0)
+        {
+            return null;
+        }
+
+        var head = normalised.Split('/')[0];
+        return Array.IndexOf(Tabs, head) >= 0 ? head : null;
+    }
+
+    /// <summary>
+    /// Orders every route on one line, so a slide direction always has an answer.
+    /// A tab is a multiple of ten and a page below it sits just after.
+    /// </summary>
+    private static int Rank(string path)
+    {
+        var normalised = Normalise(path);
+        var index = IndexOf(normalised);
+
+        if (index < 0)
+        {
+            return -1;
+        }
+
+        var isTab = Array.IndexOf(Tabs, normalised) >= 0;
+        return (index * 10) + (isTab ? 0 : 1);
     }
 }

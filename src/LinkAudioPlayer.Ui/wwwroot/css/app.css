@@ -1031,3 +1031,48 @@ button.danger,
 /* No touch-action override here on purpose. swipe.js only observes the gesture and
    never calls preventDefault, so claiming horizontal panning would buy nothing and
    risk breaking text selection inside the inputs. */
+
+/* The help dialog is taller than a confirmation, so it scrolls inside itself. */
+.dialog.help {
+  max-width: 440px;
+  max-height: 76vh;
+  overflow-y: auto;
+}
+
+.help-list {
+  margin: 0 0 1.1rem;
+}
+
+.help-list dt {
+  margin-top: 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-soft);
+}
+
+.help-list dt:first-child {
+  margin-top: 0;
+}
+
+.help-list dd {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.help-list strong {
+  color: var(--text);
+}
+
+/* A button carrying an icon beside its label. */
+button .icon-svg {
+  margin-right: 0.45rem;
+}
+
+button.icon .icon-svg,
+.btn.round .icon-svg {
+  margin-right: 0;
+}
