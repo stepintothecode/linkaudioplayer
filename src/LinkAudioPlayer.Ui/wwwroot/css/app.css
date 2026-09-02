@@ -27,7 +27,9 @@
   --safe-left: 0px;
   --safe-right: 0px;
 
-  --player-height: 8.5rem;
+  /* Overwritten from player-space.js with the bar's real height, which changes with
+     the queue name and the error block. This is only the value before it reports. */
+  --player-height: 0px;
 }
 
 * {
@@ -123,7 +125,7 @@ body {
 /* Content clears the fixed player, the nav bar and the side cutouts. */
 main {
   padding: 1rem calc(var(--safe-right) + 1rem)
-    calc(var(--player-height) + var(--safe-bottom) + 1rem) calc(var(--safe-left) + 1rem);
+    calc(var(--player-height) + var(--safe-bottom) + 1.5rem) calc(var(--safe-left) + 1rem);
   max-width: 900px;
   margin: 0 auto;
 }
@@ -764,8 +766,13 @@ button.danger,
 .marquee {
   overflow: hidden;
   white-space: nowrap;
-  mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+}
+
+/* Only the trailing edge fades, and only while the title is actually moving.
+   A mask on the leading edge dimmed the first character of every title. */
+.marquee.scrolling {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 14px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 14px), transparent);
 }
 
 .marquee-text {
@@ -1106,4 +1113,21 @@ button.wide .wide-chev {
 
 button.wide .icon-svg {
   margin-right: 0;
+}
+
+/* About sections are boxed so Backup and Support read as separate things. */
+.section {
+  padding: 0.9rem 1rem 1.1rem;
+  margin-top: 1.1rem;
+  background: linear-gradient(180deg, rgb(33 29 44 / 55%), rgb(23 20 31 / 55%));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.section h2 {
+  margin-top: 0;
+}
+
+.section > :last-child {
+  margin-bottom: 0;
 }

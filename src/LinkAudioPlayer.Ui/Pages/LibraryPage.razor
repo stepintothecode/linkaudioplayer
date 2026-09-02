@@ -77,11 +77,16 @@ else
                         @onclick="() => PlayFromAsync(index)" @onclick:stopPropagation>
                     <Icon Name="play" Size="18" />
                 </button>
-                <button class="icon" title="Save for offline" aria-label="Save for offline"
-                        disabled="@(entry.IsDownloaded || _downloading.Contains(entry.Track.Id))"
-                        @onclick="() => DownloadAsync(entry.Track)" @onclick:stopPropagation>
-                    <Icon Name="download" Size="18" />
-                </button>
+                @* Hidden once the track is saved. A permanently disabled button says
+                   nothing the missing button does not say more quietly. *@
+                @if (!entry.IsDownloaded)
+                {
+                    <button class="icon" title="Save for offline" aria-label="Save for offline"
+                            disabled="@_downloading.Contains(entry.Track.Id)"
+                            @onclick="() => DownloadAsync(entry.Track)" @onclick:stopPropagation>
+                        <Icon Name="download" Size="18" />
+                    </button>
+                }
                 <button class="icon danger" title="Remove" aria-label="Remove"
                         @onclick="() => DeleteAsync(entry.Track)" @onclick:stopPropagation>
                     <Icon Name="trash" Size="18" />

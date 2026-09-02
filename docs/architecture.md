@@ -102,6 +102,12 @@ context matches how the app actually behaves.
 **`PlayerController` is a singleton.** The queue and the audio session have to
 survive navigation between pages.
 
+**The player bar's height is measured, not guessed.** `player-space.js` watches the
+bar with a `ResizeObserver` and writes `--player-height`, which the lists use as bottom
+padding. A constant could not track a bar that grows with the queue name and the error
+block, and shrinks to nothing when playback stops, so the last row of every list sat
+underneath it.
+
 **A tab remembers where you were inside it.** `TabMemory` holds the playlist last
 opened, so tapping or swiping onto the playlists tab returns to it rather than the
 list. Seeing the list clears it, and so does opening a playlist that no longer exists,

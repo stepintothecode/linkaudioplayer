@@ -28,55 +28,61 @@
 
 <HelpDialog @bind-Visible="_help" />
 
-<h2>Backup</h2>
+<section class="section">
+    <h2>Backup</h2>
 
-<p class="hint">
-    Your library and playlists live only on this device. A backup is a plain JSON file
-    you keep wherever you like.
-</p>
+    <p class="hint">
+        Your library and playlists live only on this device. A backup is a plain JSON
+        file you keep wherever you like.
+    </p>
 
-<div class="row wrap about-actions">
-    <button class="primary" disabled="@_busy" @onclick="ExportAsync">
-        @(_busy ? "Working" : "Export backup")
-    </button>
-    <button disabled="@_busy" @onclick="ImportAsync">Import backup</button>
-</div>
+    <div class="row wrap about-actions">
+        <button class="primary" disabled="@_busy" @onclick="ExportAsync">
+            @(_busy ? "Working" : "Export backup")
+        </button>
+        <button disabled="@_busy" @onclick="ImportAsync">Import backup</button>
+    </div>
 
-<p class="hint">
-    Importing merges. Nothing is deleted, a link already in the library is not added
-    twice, and a playlist that already exists only gains what it is missing.
-</p>
+    <p class="hint">
+        Importing merges. Nothing is deleted, a link already in the library is not
+        added twice, and a playlist that already exists only gains what it is missing.
+    </p>
 
-@if (_result is { } result)
-{
-    <p class="about-result">@result</p>
-}
+    @if (_result is { } result)
+    {
+        <p class="about-result">@result</p>
+    }
+</section>
 
-<h2>Support</h2>
+<section class="section">
+    <h2>Support</h2>
 
-<p class="hint">
-    Everything here is free, ad free and tracker free, and stays that way.
-</p>
+    <p class="hint">
+        Everything here is free, ad free and tracker free, and stays that way.
+    </p>
 
-<div class="links">
-    <a class="link-btn" href="@SupportUrl" title="Support this project" aria-label="Support this project"
-       @onclick="OpenSupportAsync" @onclick:preventDefault>
-        <Icon Name="heart" Size="22" />
-    </a>
-    <a class="link-btn" href="@GitHubUrl" title="Source and issues" aria-label="Source and issues"
-       @onclick="OpenGitHubAsync" @onclick:preventDefault>
-        <Icon Name="github" Size="22" />
-    </a>
-    <a class="link-btn youtube" href="@YouTubeUrl" title="YouTube" aria-label="YouTube"
-       @onclick="OpenYouTubeAsync" @onclick:preventDefault>
-        <Icon Name="youtube" Size="22" />
-    </a>
-</div>
+    <div class="links">
+        <a class="link-btn" href="@SupportUrl" title="Support this project"
+           aria-label="Support this project"
+           @onclick="OpenSupportAsync" @onclick:preventDefault>
+            <Icon Name="heart" Size="22" />
+        </a>
+        <a class="link-btn" href="@GitHubUrl" title="Source and issues"
+           aria-label="Source and issues"
+           @onclick="OpenGitHubAsync" @onclick:preventDefault>
+            <Icon Name="github" Size="22" />
+        </a>
+        <a class="link-btn youtube" href="@YouTubeUrl" title="YouTube" aria-label="YouTube"
+           @onclick="OpenYouTubeAsync" @onclick:preventDefault>
+            <Icon Name="youtube" Size="22" />
+        </a>
+    </div>
 
-<p class="fine">
-    A voluntary tip, not a purchase. It buys no features, no priority support and no
-    say over the app. Opens in your browser.
-</p>
+    <p class="fine">
+        A voluntary tip, not a purchase. It buys no features, no priority support and
+        no say over the app. Opens in your browser.
+    </p>
+</section>
 
 @code {
     private const string SupportUrl = "https://stepintothecode.github.io/support/?from=linkaudioplayer-app";

@@ -6,7 +6,7 @@
 @* Mirrors what the Android lock screen shows. *@
 @if (Player.Current is { } track)
 {
-    <div class="player">
+    <div class="player" @ref="_playerElement">
         @if (Player.IsPreparing)
         {
             <div class="scrubber preparing" style="--progress: @Percent(Player.PrepareProgress)">
@@ -89,7 +89,10 @@
         System.Globalization.CultureInfo.InvariantCulture;
 
     private ElementReference _titleElement;
+    private ElementReference _playerElement;
     private IJSObjectReference? _marquee;
+    private IJSObjectReference? _space;
+    private bool _spaceClaimed;
     private string? _marqueeFor;
     private double? _scrubbing;
 
@@ -105,9 +108,11 @@
     /// <summary>Subscribes to player state so the bar redraws as playback progresses.</summary>
     protected override void OnInitialized() => Player.StateChanged += OnStateChanged;
 
-    /// <summary>Re-measures the title whenever the track changes.</summary>
+    /// <summary>Re-measures the bar and the title whenever what is playing changes.</summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await MeasureBarAsync();
+
         var title = Player.Current?.Title;
         if (title is null || title == _marqueeFor)
         {
@@ -126,6 +131,45 @@
         catch (JSException)
         {
             // Scrolling the title is decorative. A static title is a fine fallback.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The web view is already gone.
+        }
+    }
+
+    /// <summary>
+    /// Tells the page how tall the bar is, so lists can clear it.
+    /// The height changes with the queue name and the error block, and the bar is not
+    /// there at all when nothing is playing.
+    /// </summary>
+    private async Task MeasureBarAsync()
+    {
+        var showing = Player.Current is not null;
+        if (showing == _spaceClaimed && showing)
+        {
+            return;
+        }
+
+        try
+        {
+            _space ??= await Js.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/LinkAudioPlayer.Ui/js/player-space.js");
+
+            if (showing)
+            {
+                await _space.InvokeVoidAsync("observe", _playerElement);
+            }
+            else if (_spaceClaimed)
+            {
+                await _space.InvokeVoidAsync("clear");
+            }
+
+            _spaceClaimed = showing;
+        }
+        catch (JSException)
+        {
+            // The lists fall back to their own padding.
         }
         catch (JSDisconnectedException)
         {
@@ -173,6 +217,19 @@
             {
                 await _marquee.InvokeVoidAsync("unobserve", _titleElement);
                 await _marquee.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The web view is already gone.
+            }
+        }
+
+        if (_space is not null)
+        {
+            try
+            {
+                await _space.InvokeVoidAsync("clear");
+                await _space.DisposeAsync();
             }
             catch (JSDisconnectedException)
             {
