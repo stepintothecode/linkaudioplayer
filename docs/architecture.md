@@ -102,6 +102,12 @@ context matches how the app actually behaves.
 **`PlayerController` is a singleton.** The queue and the audio session have to
 survive navigation between pages.
 
+**The web view draws its own scrollbars, and CSS cannot reach them.** They are the
+bars that appear along the right and bottom edges when a scroll runs out of room, so
+`MauiProgram` turns them and the overscroll effect off on the platform view. The page
+separately sets `overflow-x: hidden`, because the swipe gesture translates the page
+sideways and that overflow would otherwise become a real horizontal scroll area.
+
 **The player bar's height is measured, not guessed.** `player-space.js` watches the
 bar with a `ResizeObserver` and writes `--player-height`, which the lists use as bottom
 padding. A constant could not track a bar that grows with the queue name and the error

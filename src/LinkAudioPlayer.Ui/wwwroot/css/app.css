@@ -39,6 +39,22 @@
 html,
 body {
   overscroll-behavior: none;
+
+  /* The swipe gesture translates the page sideways. Without this that overflow
+     becomes a real scrollable area and the web view shows a horizontal bar along
+     the bottom while the finger is down. */
+  overflow-x: hidden;
+}
+
+/* The web view's own scrollbars are the bars that appear at the edges on an
+   overscroll. Nothing here scrolls far enough for them to be useful. */
+html {
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 body {

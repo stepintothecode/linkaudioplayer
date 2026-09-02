@@ -29,6 +29,7 @@ public static class MauiProgram
         AddDiagnostics(builder);
 
         builder.Services.AddMauiBlazorWebView();
+        TrimWebViewChrome();
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
@@ -43,6 +44,22 @@ public static class MauiProgram
 
         return app;
     }
+
+    /// <summary>
+    /// Turns off the web view's own scrollbars and its overscroll effect.
+    /// Those are the bars that appear along the right and bottom edges when a scroll
+    /// runs out of room. CSS cannot reach them, because they are drawn by the host
+    /// view rather than by the page.
+    /// </summary>
+    private static void TrimWebViewChrome() =>
+        Microsoft.AspNetCore.Components.WebView.Maui.BlazorWebViewHandler.BlazorWebViewMapper
+            .AppendToMapping("TrimChrome", (handler, _) =>
+            {
+                var view = handler.PlatformView;
+                view.OverScrollMode = global::Android.Views.OverScrollMode.Never;
+                view.VerticalScrollBarEnabled = false;
+                view.HorizontalScrollBarEnabled = false;
+            });
 
     /// <summary>
     /// The in memory log buffer and the global exception hooks.
