@@ -22,6 +22,9 @@ public sealed class LibraryDbContext : DbContext
     /// <summary>Ordered playlist membership rows.</summary>
     public DbSet<PlaylistItem> PlaylistItems => Set<PlaylistItem>();
 
+    /// <summary>Music folders found on the phone.</summary>
+    public DbSet<DeviceFolder> DeviceFolders => Set<DeviceFolder>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +39,15 @@ public sealed class LibraryDbContext : DbContext
             entity.HasIndex(t => t.Position);
             entity.HasIndex(t => t.SourceUrl).IsUnique();
             entity.HasIndex(t => t.CacheKey).IsUnique();
+            entity.HasIndex(t => new { t.FolderPath, t.Position });
+        });
+
+        modelBuilder.Entity<DeviceFolder>(entity =>
+        {
+            entity.HasKey(f => f.Id);
+            entity.Property(f => f.Path).IsRequired();
+            entity.Property(f => f.Name).IsRequired();
+            entity.HasIndex(f => f.Path).IsUnique();
         });
 
         modelBuilder.Entity<Playlist>(entity =>

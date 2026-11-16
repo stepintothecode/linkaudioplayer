@@ -191,6 +191,35 @@ renderer, and every button in the app stops responding until it is force closed.
 Handlers route through `UiErrorState.TryAsync`, and `MainLayout` wraps the body in
 an `ErrorBoundary` as a second line.
 
+**The app owns the back button.** On a tab, the first press shows "Press back again to
+exit" and a second within two seconds sends the app to the background, as Android does
+for back on a root screen, so music keeps playing. Anywhere else, back returns to the
+page you came from, tracked by `BackNavigation`, and an open confirmation closes first.
+`MainActivity` registers its own `OnBackPressedCallback` and re-adds it on resume and
+when the layout attaches, because Android asks the newest callback first and the web
+view adds one that walks its history. MAUI's `OnBackPressed` lifecycle hook was tried
+first and is never reached on Android 16, where back arrives through predictive back.
+
+**Every page keeps its scroll position.** `scroll-memory.js` records how far down each
+route was and restores it on return, however you got back. The target is read when the
+route changes, before the new page renders, because swapping the page shrinks the
+document and the clamped scroll would otherwise overwrite it. It then waits for the
+page to grow tall enough, since lists load after the first render. `FocusOnNavigate`
+was removed: focusing a heading drew the web view's focus ring round the logo and
+scrolled the page to the top.
+
+**Swipes work from anywhere.** `swipe.js` listens on the document, not on `main`,
+which covers neither the header nor the space below a short page. The header and main
+set `touch-action: pan-y`, so the browser keeps vertical scrolling and no longer cancels
+a sideways drag it took for its own pan. A long drag counts however slowly it is made;
+only a short flick has to be quick.
+
+**Only a retry clears an error.** `UiErrorState.TryAsync` used to clear the banner
+whenever any work succeeded, and pages reload lists and rebind the reorder handle on
+every render, so a failed add or save vanished before it could be read. A success now
+clears only the message its own action produced, and moving to another screen clears
+the rest.
+
 **Network work is pushed off the caller's thread with `Task.Run`.** A Blazor event
 handler runs on the renderer's dispatcher, which on Android is the main thread, so
 every await inside a click handler resumes there. Android's StrictMode then throws
@@ -266,6 +295,54 @@ wall rather than a dead control.
 **Reordering uses pointer events, not HTML5 drag and drop**, which never fires for
 touch in an Android web view. `reorder.js` shifts rows visually and reports the
 final move; it never mutates the DOM, because Blazor owns that.
+
+**Phone songs are tracks with a folder.** A song found on the phone is a `Track` whose
+`FolderPath` is set and whose `SourceUrl` is its MediaStore content URI. That lets it
+sit in a user's playlist through the normal `PlaylistItem` row, while every library
+query filters on `FolderPath == null`, so it never shows in the library, a backup or
+the orphan purge. `TrackStore.DeleteAsync` refuses one outright: it leaves only when
+its file does.
+
+**The phone is read through MediaStore, not the file system.** Android already indexes
+every audio file, and one cursor over that table stays quick with thousands of songs,
+where walking folders takes seconds. `is_music` leaves out ringtones, alarms and
+notification sounds, and `is_recording` leaves out voice recordings from Android 12.
+The only permission is `READ_MEDIA_AUDIO`, which is read only. Those flags are not
+enough on their own: older Samsung recorders saved to `VoiceRecorder/` and
+`Music/Voice Recorder/`, which Android marks as music, so `DeviceFolder.IsNotMusic`
+also skips folders named like recordings, voice notes or ringtones.
+
+**A scan never makes a screen wait.** Pages render what is stored at once and redraw
+if a scan changes it. `DeviceMusicService` runs one scan at a time, shares it with any
+caller that arrives meanwhile, and skips a scan within 30 seconds of the last. The diff
+in `DeviceFolderStore.SyncAsync` saves nothing when nothing changed, so a rescan of an
+unchanged phone costs one query.
+
+**A rescan keeps what the user arranged.** Songs are matched by content URI. New ones
+join the end of their folder, a moved one joins the end of its new folder, and a
+vanished one is removed with its playlist entries. Folders are matched by path, so two
+folders called Music in different places stay separate and show their paths.
+
+**Saving uses the system save dialog.** `ACTION_CREATE_DOCUMENT` lets the user pick the
+folder, and the app writes only the one file chosen, so no write permission is needed.
+The dialog opens before the download, so the user can choose and walk away. A failure
+deletes the picked file rather than leaving an empty one behind.
+
+**MP3 is encoded on the phone with LAME.** Android decodes AAC and Opus but has no MP3
+encoder, so `libmp3lame.so` ships for each ABI, about 240 KB each and roughly 110 KB
+added to the APK once compressed. `AndroidMp3Encoder` decodes with `MediaCodec` and
+encodes at 192 kbps constant bitrate, which needs no Xing header and so no seek back
+into a save stream that may not allow one. The ID3 tag is written in C# by `Id3Tag`
+as version 2.3 with UTF-16 text, which is what both Android and Windows read and what
+keeps a Hindi or Kannada title intact. `tools/build-lame.ps1` rebuilds the libraries.
+
+**M4A is never re-encoded.** It is YouTube's AAC stream copied as it is. A source that
+is not AAC, such as a direct mp3 link, is refused for M4A with a pointer to MP3, rather
+than saved under the wrong extension.
+
+**The header gives way before the tabs.** The name and three tabs need about 400px and
+many phones are 360px wide, so the header pushed the page sideways and About fell off
+the right edge. The name now ellipsises and, below 26rem, gives way to the logo.
 
 ## Not built
 

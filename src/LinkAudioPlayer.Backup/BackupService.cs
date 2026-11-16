@@ -55,8 +55,10 @@ public sealed class BackupService
                 Description = playlist.Description,
                 TrackUrls =
                 [
+                    // A phone song's URI means nothing on another install, so it stays out.
                     .. playlist.Items
                         .OrderBy(item => item.Position)
+                        .Where(item => item.Track is { IsOnDevice: false })
                         .Select(item => item.Track?.SourceUrl)
                         .OfType<string>(),
                 ],

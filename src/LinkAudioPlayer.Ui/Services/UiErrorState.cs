@@ -11,6 +11,9 @@ public sealed class UiErrorState
 {
     private readonly ILogger<UiErrorState> _logger;
 
+    /// <summary>The action behind the current message, so only a retry of it clears it.</summary>
+    private string? _failedAction;
+
     /// <summary>Creates the state over the logger that feeds the log viewer.</summary>
     public UiErrorState(ILogger<UiErrorState> logger) => _logger = logger;
 
@@ -28,6 +31,7 @@ public sealed class UiErrorState
         ArgumentNullException.ThrowIfNull(exception);
 
         _logger.LogError(exception, "{Action} failed", action);
+        _failedAction = action;
         Message = $"{action} failed: {Describe(exception)}";
         Changed?.Invoke();
     }
@@ -41,6 +45,7 @@ public sealed class UiErrorState
         }
 
         Message = null;
+        _failedAction = null;
         Changed?.Invoke();
     }
 
@@ -48,15 +53,25 @@ public sealed class UiErrorState
     /// Runs work, reporting any failure instead of letting it escape.
     /// Returns false when the work failed.
     /// </summary>
+    /// <remarks>
+    /// Success clears the message only when it came from this same action. Any success
+    /// used to clear it, and pages run background work on every render, such as
+    /// binding the reorder handle or reloading a list, so a failure vanished before it
+    /// could be read.
+    /// </remarks>
     public async Task<bool> TryAsync(string action, Func<Task> work)
     {
         ArgumentNullException.ThrowIfNull(work);
 
-        Clear();
-
         try
         {
             await work();
+
+            if (_failedAction == action)
+            {
+                Clear();
+            }
+
             return true;
         }
         catch (Exception ex)

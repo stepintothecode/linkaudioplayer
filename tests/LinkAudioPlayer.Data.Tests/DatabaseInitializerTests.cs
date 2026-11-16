@@ -70,11 +70,40 @@ public sealed class DatabaseInitializerTests : IAsyncLifetime
         Assert.True(await HasPositionAsync(check, ct));
     }
 
-    /// <summary>Drops the column and its dependent index, mimicking the older schema.</summary>
+    [Fact]
+    public async Task Adds_the_phone_folder_schema_to_a_database_that_predates_it()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        await using (var context = _database.CreateDbContext())
+        {
+            await DropPhoneSchemaAsync(context, ct);
+        }
+
+        await DatabaseInitializer.InitializeAsync(_database, ct);
+
+        var store = new DeviceFolderStore(_database);
+        await store.SyncAsync([new("content://media/1", "Yellow", null, null, "Music/Coldplay")], ct);
+
+        var folder = Assert.Single(await store.ListAsync(ct));
+        Assert.Equal("Coldplay", folder.Folder.Name);
+    }
+
+    /// <summary>Drops the columns and their dependent indexes, mimicking the older schema.</summary>
     private static async Task DropPositionAsync(LibraryDbContext db, CancellationToken ct)
     {
+        // The phone folder index came later and depends on Position, so it goes first.
+        await DropPhoneSchemaAsync(db, ct);
         await db.Database.ExecuteSqlRawAsync("DROP INDEX IF EXISTS \"IX_Tracks_Position\";", ct);
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"Tracks\" DROP COLUMN \"Position\";", ct);
+    }
+
+    /// <summary>Removes everything the phone folders added, as an install from before them.</summary>
+    private static async Task DropPhoneSchemaAsync(LibraryDbContext db, CancellationToken ct)
+    {
+        await db.Database.ExecuteSqlRawAsync("DROP INDEX IF EXISTS \"IX_Tracks_FolderPath_Position\";", ct);
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"Tracks\" DROP COLUMN \"FolderPath\";", ct);
+        await db.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"DeviceFolders\";", ct);
     }
 
     private static async Task<bool> HasPositionAsync(LibraryDbContext db, CancellationToken ct)

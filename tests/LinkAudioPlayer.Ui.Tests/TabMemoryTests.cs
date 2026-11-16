@@ -22,6 +22,16 @@ public sealed class TabMemoryTests
     }
 
     [Fact]
+    public void A_phone_folder_is_remembered_like_a_playlist_and_swipes_back_to_the_list()
+    {
+        _memory.OpenedDeviceFolder(Id);
+
+        Assert.Equal($"playlists/device/{Id}", _memory.Resolve("playlists"));
+        Assert.Equal(1, TabNavigation.IndexOf($"playlists/device/{Id}"));
+        Assert.Equal("playlists", TabNavigation.Next($"playlists/device/{Id}", -1));
+    }
+
+    [Fact]
     public void Seeing_the_list_forgets_the_open_playlist()
     {
         _memory.OpenedPlaylist(Id);

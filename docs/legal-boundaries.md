@@ -40,6 +40,16 @@ official API is not an option. The API forbids it outright, in section III.I.9
 of the Developer Policies. There is no compliant way to get lock screen playback
 out of the embedded player, because that restriction is the paid product.
 
+Saving a link's audio as a file is the same act as caching it for offline play, with
+the file placed where the user chose. It is still for personal listening. Do not
+describe it as a converter or a way to collect music.
+
+## Third party code
+
+The MP3 button uses LAME, which is LGPL 2.1. It is linked dynamically from
+`libmp3lame.so`, so it can be replaced without touching the app, and
+`tools/build-lame.ps1` shows how it was built. MP3 patents expired in 2017.
+
 ## Rules for contributions
 
 **Do not turn this into a service or a product.** No hosted instance, no

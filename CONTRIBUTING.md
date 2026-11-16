@@ -140,3 +140,16 @@ into `src/LinkAudioPlayer.App/Resources/AppIcon/appiconfg.png`:
 ```bash
 python tools/make-icons.py assets/logo
 ```
+
+## MP3 encoder
+
+The MP3 button uses LAME, committed as `libmp3lame.so` under
+`src/LinkAudioPlayer.App/Platforms/Android/lib/`, one folder per ABI. A normal build
+needs nothing else. To rebuild it, download `lame-3.100.tar.gz`, check its SHA-256
+against the one in the script, extract it, and run:
+
+```powershell
+./tools/build-lame.ps1 -Source <path to lame-3.100>
+```
+
+It needs the Android NDK, found through `ANDROID_HOME`.

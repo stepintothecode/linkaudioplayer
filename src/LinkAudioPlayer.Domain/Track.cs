@@ -33,9 +33,23 @@ public sealed class Track
     /// <summary>
     /// Sort order in the library, ascending, dense from zero.
     /// A new track takes position zero and pushes the rest down, so the library reads
-    /// newest first until the user drags something.
+    /// newest first until the user drags something. For a song on the phone it is the
+    /// order within its folder instead.
     /// </summary>
     public int Position { get; set; }
+
+    /// <summary>
+    /// Folder holding a song found on the phone, such as "Music/Coldplay". Null for a
+    /// track added from a link. A phone song plays straight from its content URI and is
+    /// never downloaded, deleted or shown in the library.
+    /// </summary>
+    public string? FolderPath { get; set; }
+
+    /// <summary>True for a song found on the phone rather than added from a link.</summary>
+    public bool IsOnDevice => FolderPath is not null;
+
+    /// <summary>Provider name given to songs found on the phone.</summary>
+    public const string DeviceProvider = "device";
 
     /// <summary>Playlist rows referencing this track.</summary>
     public List<PlaylistItem> PlaylistItems { get; set; } = [];

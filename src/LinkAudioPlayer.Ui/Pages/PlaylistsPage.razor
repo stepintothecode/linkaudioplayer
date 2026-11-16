@@ -6,6 +6,8 @@
 @inject ConfirmService Confirm
 @inject RemovalService Removal
 @inject TabMemory Memory
+@inject DeviceMusicService Device
+@inject IDeviceFolderStore Folders
 @inject IJSRuntime Js
 
 <h1 class="visually-hidden">Playlists</h1>
@@ -16,7 +18,7 @@
     <button class="primary" disabled="@string.IsNullOrWhiteSpace(_name)" @onclick="CreateAsync">Create</button>
 </div>
 
-@if (_playlists.Count > 0)
+@if (_playlists.Count > 0 || _folders.Count > 0)
 {
     <div class="search-field">
         <Icon Name="search" Size="17" Class="search-glyph" />
@@ -68,8 +70,69 @@ else
     </ul>
 }
 
+@* The phone's own folders. Read only: they can be reordered, never deleted, because
+   the files belong to the phone and not to this app. *@
+<h2 class="section-head">
+    <Icon Name="phone" Size="15" />
+    On this device@(_folders.Count > 0 ? $" ({VisibleFolders.Count}{(IsFiltered ? $" of {_folders.Count}" : "")})" : "")
+</h2>
+
+@if (!Device.HasAccess)
+{
+    <div class="device-card">
+        <p>Show the music saved on this phone as playlists, one per folder. The app only reads the files and never changes or deletes them.</p>
+        <div class="row wrap">
+            <button class="primary" @onclick="AllowAsync">Allow access</button>
+            @if (_denied)
+            {
+                <button class="btn" @onclick="Device.OpenSettings">Open settings</button>
+            }
+        </div>
+        @if (_denied)
+        {
+            <p class="hint">Android stopped asking. In settings, open Permissions, then Music and audio, then Allow.</p>
+        }
+    </div>
+}
+else if (_folders.Count == 0)
+{
+    <p class="empty">@(Device.IsScanning ? "Looking for music on this phone" : "No music found on this phone.")</p>
+}
+else if (VisibleFolders.Count == 0)
+{
+    <p class="empty">No folder matches that search.</p>
+}
+else
+{
+    <p class="hint">@(IsFiltered ? "Clear the search to reorder." : "Drag the handle to reorder.")</p>
+    <ul class="list @(IsFiltered ? "" : "reorderable")" @ref="_folderList">
+        @foreach (var (entry, index) in VisibleFolders.Select((f, i) => (f, i)))
+        {
+            <li class="item" @key="entry.Folder.Id" data-index="@index">
+                @if (!IsFiltered)
+                {
+                    <span class="grip" title="Drag to reorder" aria-label="Reorder">
+                        <Icon Name="grip" Size="18" />
+                    </span>
+                }
+                <span class="folder-glyph"><Icon Name="folder" Size="20" /></span>
+                <div class="meta">
+                    <a class="title" href="@($"playlists/device/{entry.Folder.Id}")">@entry.Folder.Name</a>
+                    <span class="sub">
+                        @(entry.SongCount == 1 ? "1 song" : $"{entry.SongCount} songs")@(IsSharedName(entry) ? $" · {entry.Folder.Path}" : "")
+                    </span>
+                </div>
+            </li>
+        }
+    </ul>
+}
+
 @code {
     private List<Playlist> _playlists = [];
+    private List<DeviceFolderSummary> _folders = [];
+    private HashSet<string> _sharedNames = new(StringComparer.CurrentCultureIgnoreCase);
+    private ElementReference _folderList;
+    private bool _denied;
     private ElementReference _listElement;
     private DotNetObjectReference<PlaylistsPage>? _self;
     private IJSObjectReference? _reorder;
@@ -85,17 +148,68 @@ else
             ? [.. _playlists.Where(p => p.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))]
             : _playlists;
 
-    /// <summary>Loads playlists, and forgets any playlist that was open.</summary>
+    /// <summary>Phone folders matching the current search, or all of them.</summary>
+    private List<DeviceFolderSummary> VisibleFolders =>
+        IsFiltered
+            ? [.. _folders.Where(f => f.Folder.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))]
+            : _folders;
+
+    /// <summary>True when another folder has the same name, so the path is shown to tell them apart.</summary>
+    private bool IsSharedName(DeviceFolderSummary entry) => _sharedNames.Contains(entry.Folder.Name);
+
+    /// <summary>
+    /// Loads playlists, and forgets any playlist that was open. The phone folders show
+    /// what is stored straight away; a background scan redraws them if anything changed.
+    /// </summary>
     protected override async Task OnInitializedAsync()
     {
         Memory.ClosedPlaylist();
+        Device.Changed += OnDeviceChanged;
         await RefreshAsync();
+        await RefreshFoldersAsync();
+        _ = ScanAsync();
     }
 
-    /// <summary>Binds the drag handler once the list exists.</summary>
+    /// <summary>Runs a scan without holding the page, then redraws so "looking" goes away.</summary>
+    private async Task ScanAsync()
+    {
+        await Device.RefreshAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Reloads the folders after a scan found something new or gone.</summary>
+    private void OnDeviceChanged() => InvokeAsync(async () =>
+    {
+        await RefreshFoldersAsync();
+        StateHasChanged();
+    });
+
+    /// <summary>Asks for access to the phone's music.</summary>
+    private async Task AllowAsync()
+    {
+        var granted = false;
+        await Errors.TryAsync("Asking for access to music", async () => granted = await Device.RequestAccessAsync());
+
+        // Android stops showing the prompt after two refusals, so offer settings instead.
+        _denied = !granted;
+        await RefreshFoldersAsync();
+    }
+
+    /// <summary>Reloads the phone folders from the store.</summary>
+    private async Task RefreshFoldersAsync() => await Errors.TryAsync("Loading the phone's folders", async () =>
+    {
+        _folders = [.. await Folders.ListAsync(CancellationToken.None)];
+        _sharedNames = _folders
+            .GroupBy(f => f.Folder.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.CurrentCultureIgnoreCase);
+    });
+
+    /// <summary>Binds the drag handlers once the lists exist.</summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_playlists.Count == 0 || IsFiltered)
+        if (IsFiltered || (_playlists.Count == 0 && _folders.Count == 0))
         {
             return;
         }
@@ -105,8 +219,39 @@ else
             _reorder ??= await Js.InvokeAsync<IJSObjectReference>(
                 "import", "./_content/LinkAudioPlayer.Ui/js/reorder.js");
             _self ??= DotNetObjectReference.Create(this);
-            await _reorder.InvokeVoidAsync("attach", _listElement, _self, nameof(OnReordered));
+
+            if (_playlists.Count > 0)
+            {
+                await _reorder.InvokeVoidAsync("attach", _listElement, _self, nameof(OnReordered));
+            }
+
+            if (_folders.Count > 0)
+            {
+                await _reorder.InvokeVoidAsync("attach", _folderList, _self, nameof(OnFoldersReordered));
+            }
         });
+    }
+
+    /// <summary>Called from JavaScript when a phone folder is dragged to a new position.</summary>
+    [JSInvokable]
+    public async Task OnFoldersReordered(int from, int to)
+    {
+        if (from == to || from < 0 || from >= _folders.Count || to < 0 || to >= _folders.Count)
+        {
+            return;
+        }
+
+        var ids = _folders.Select(f => f.Folder.Id).ToList();
+        var moved = ids[from];
+        ids.RemoveAt(from);
+        ids.Insert(to, moved);
+
+        await Errors.TryAsync(
+            "Reordering the phone's folders",
+            async () => await Folders.ReorderFoldersAsync(ids, CancellationToken.None));
+
+        await RefreshFoldersAsync();
+        StateHasChanged();
     }
 
     /// <summary>Called from JavaScript when a drag finishes on a new position.</summary>
@@ -134,11 +279,14 @@ else
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        Device.Changed -= OnDeviceChanged;
+
         if (_reorder is not null)
         {
             try
             {
                 await _reorder.InvokeVoidAsync("detach", _listElement);
+                await _reorder.InvokeVoidAsync("detach", _folderList);
                 await _reorder.DisposeAsync();
             }
             catch (JSDisconnectedException)

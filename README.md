@@ -28,6 +28,19 @@ DRM protected services like Spotify and Apple Music are refused by design. See
 [docs/legal-boundaries.md](docs/legal-boundaries.md) for why, and read it before
 contributing.
 
+## Music on the phone
+
+The **Playlists** tab also lists the music already on the phone under **On this
+device**, one playlist per folder. A song in `Songs/Coldplay` appears in a playlist
+called Coldplay. You can play and reorder these, and add their songs to your own
+playlists. The app only reads the files and never changes, moves or deletes them.
+
+## Saving audio as a file
+
+Under the link field, **M4A** and **MP3** save a single video's audio wherever you
+choose on the phone. M4A is YouTube's own audio, saved as it is. MP3 is re-encoded on
+the phone, which takes a little longer. Saving does not add the link to your library.
+
 ## Backup
 
 The **About** tab exports your whole library and every playlist as a JSON file, and

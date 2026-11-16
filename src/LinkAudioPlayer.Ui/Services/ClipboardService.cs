@@ -1,15 +1,36 @@
+using LinkAudioPlayer.Abstractions;
 using Microsoft.JSInterop;
 
 namespace LinkAudioPlayer.Ui.Services;
 
-/// <summary>Copies text to the device clipboard from the web view.</summary>
+/// <summary>Copies text to the device clipboard from the web view, and reads it back natively.</summary>
 public sealed class ClipboardService : IAsyncDisposable
 {
     private readonly IJSRuntime _js;
+    private readonly IClipboardReader _reader;
     private IJSObjectReference? _module;
 
-    /// <summary>Creates the service over the Blazor JavaScript runtime.</summary>
-    public ClipboardService(IJSRuntime js) => _js = js;
+    /// <summary>Creates the service over the Blazor JavaScript runtime and the platform clipboard.</summary>
+    public ClipboardService(IJSRuntime js, IClipboardReader reader)
+    {
+        _js = js;
+        _reader = reader;
+    }
+
+    /// <summary>Clipboard text, trimmed, or null when there is none or it cannot be read.</summary>
+    public async Task<string?> PasteAsync()
+    {
+        try
+        {
+            var text = await _reader.ReadTextAsync();
+            return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+        }
+        catch (Exception)
+        {
+            // Some phones refuse the read outright. Long pressing the field still works.
+            return null;
+        }
+    }
 
     /// <summary>Copies text. Returns false when the web view refused.</summary>
     public async Task<bool> CopyAsync(string text)

@@ -75,6 +75,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<ConfirmService>();
         builder.Services.AddSingleton<TabMemory>();
         builder.Services.AddScoped<ClipboardService>();
+        builder.Services.AddScoped<AudioSaveTracker>();
+        builder.Services.AddSingleton<BackButton>();
+        builder.Services.AddSingleton<IAppExit, AndroidAppExit>();
 
         builder.Logging.AddProvider(new InMemoryLoggerProvider(store));
         builder.Logging.SetMinimumLevel(LogLevel.Information);
@@ -98,6 +101,11 @@ public static class MauiProgram
         services.AddScoped<IPlaylistStore, PlaylistStore>();
         services.AddScoped<ITrackStore, TrackStore>();
 
+        // Singletons: the scan runs in the background and outlives any one page.
+        services.AddSingleton<IDeviceFolderStore, DeviceFolderStore>();
+        services.AddSingleton<IDeviceMusicSource, AndroidDeviceMusicSource>();
+        services.AddSingleton<DeviceMusicService>();
+
         services.Configure<MediaCacheOptions>(options =>
             options.Directory = Path.Combine(dataDirectory, "media"));
 
@@ -105,7 +113,10 @@ public static class MauiProgram
         services.AddScoped<BackupService>();
         services.AddSingleton<IBackupFileService, AndroidBackupFileService>();
         services.AddSingleton<IExternalBrowser, AndroidExternalBrowser>();
+        services.AddSingleton<IClipboardReader, AndroidClipboardReader>();
         services.AddSingleton<IMediaCache, FileSystemMediaCache>();
+        services.AddSingleton<IAudioFileSaver, AndroidAudioFileSaver>();
+        services.AddSingleton<IMp3Encoder, AndroidMp3Encoder>();
     }
 
     /// <summary>Source policy, resolvers and downloaders.</summary>
@@ -126,6 +137,7 @@ public static class MauiProgram
         services.AddSingleton<MediaResolutionService>();
         services.AddScoped<TrackLibraryService>();
         services.AddScoped<RemovalService>();
+        services.AddScoped<AudioExportService>();
     }
 
     /// <summary>Platform audio and the queue controller, both long lived.</summary>
@@ -163,6 +175,10 @@ public static class MauiProgram
             {
                 logger.LogInformation("Cleared {Count} orphaned download(s)", purged);
             }
+
+            // Not awaited: startup never waits on the phone's music, and the playlists
+            // page redraws if the scan finds anything new.
+            _ = services.GetRequiredService<DeviceMusicService>().RefreshAsync(force: true);
         }
         catch (Exception ex)
         {

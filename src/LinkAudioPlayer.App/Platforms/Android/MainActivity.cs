@@ -31,6 +31,84 @@ public sealed class MainActivity : MauiAppCompatActivity
 
         ApplyWindowInsets();
         RequestNotificationPermission();
+
+        _back = new AppBackCallback(this);
+        _button = IPlatformApplication.Current?.Services.GetService<LinkAudioPlayer.Ui.Services.BackButton>();
+        if (_button is not null)
+        {
+            _button.Attached += OnBackButtonAttached;
+        }
+    }
+
+    private AppBackCallback? _back;
+    private LinkAudioPlayer.Ui.Services.BackButton? _button;
+
+    private void OnBackButtonAttached() => RunOnUiThread(RaiseBackCallback);
+
+    /// <inheritdoc />
+    protected override void OnDestroy()
+    {
+        // The button outlives the activity, which Android recreates freely.
+        if (_button is not null)
+        {
+            _button.Attached -= OnBackButtonAttached;
+        }
+
+        base.OnDestroy();
+    }
+
+    /// <inheritdoc />
+    protected override void OnResume()
+    {
+        base.OnResume();
+        RaiseBackCallback();
+    }
+
+    /// <summary>
+    /// Puts the app's back callback above every other. Android asks the most recently
+    /// added callback first, and the web view adds its own, which walks its history,
+    /// once it is created. MAUI's OnBackPressed lifecycle hook is not reached at all on
+    /// Android 16, where back arrives through the predictive back dispatcher.
+    /// </summary>
+    private void RaiseBackCallback()
+    {
+        if (_back is null)
+        {
+            return;
+        }
+
+        _back.Remove();
+        OnBackPressedDispatcher.AddCallback(this, _back);
+    }
+
+    /// <summary>Hands back presses to the app's rules, falling through to Android's default before they are ready.</summary>
+    private sealed class AppBackCallback : AndroidX.Activity.OnBackPressedCallback
+    {
+        private readonly MainActivity _activity;
+
+        public AppBackCallback(MainActivity activity)
+            : base(true) => _activity = activity;
+
+        public override void HandleOnBackPressed()
+        {
+            var button = IPlatformApplication.Current?.Services.GetService<LinkAudioPlayer.Ui.Services.BackButton>();
+            if (button?.Press() == true)
+            {
+                return;
+            }
+
+            // Not ready yet: step aside for this one press so the default can run.
+            Enabled = false;
+            _activity.OnBackPressedDispatcher.OnBackPressed();
+            Enabled = true;
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnActivityResult(int requestCode, Result resultCode, Android.Content.Intent? data)
+    {
+        base.OnActivityResult(requestCode, resultCode, data);
+        LinkAudioPlayer.App.Platforms.Android.ActivityResults.Complete(requestCode, resultCode, data);
     }
 
     /// <summary>

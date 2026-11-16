@@ -86,8 +86,11 @@ public static class TabNavigation
         return trimmed.Trim('/');
     }
 
+    /// <summary>True when the route is one of the top level tabs.</summary>
+    public static bool IsTab(string path) => Array.IndexOf(Tabs, Normalise(path)) >= 0;
+
     /// <summary>The tab a drilled in route sits under, or null when it is a tab itself.</summary>
-    private static string? ParentOf(string normalised)
+    public static string? ParentOf(string normalised)
     {
         if (normalised.Length == 0 || Array.IndexOf(Tabs, normalised) >= 0)
         {

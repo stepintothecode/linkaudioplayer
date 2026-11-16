@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\LinkAudioPlayer.Ui\LinkAudioPlayer.Ui.csproj" />
+    <ProjectReference Include="..\support\LinkAudioPlayer.TestSupport.csproj" />
   </ItemGroup>
 
   <ItemGroup>

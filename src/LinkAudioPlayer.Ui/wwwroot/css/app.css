@@ -49,6 +49,11 @@ main {
   overflow-x: clip;
 }
 
+/* Safety net for the header, which sits outside main. clip, for the same reason. */
+#app {
+  overflow-x: clip;
+}
+
 /* The web view's own scrollbars are the bars that appear at the edges on an
    overscroll. Nothing here scrolls far enough for them to be useful. */
 html {
@@ -104,8 +109,14 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
-.app-header h1 {
+/* The title gives way before the tabs do. Title plus three tabs needs about 400px, and
+   many phones are 360px wide, or narrower with a larger display size or font. Without
+   this the header pushed the page sideways and the About tab fell off the right edge. */
+.app-header .brand {
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -118,8 +129,46 @@ body {
 
 .app-header nav {
   display: flex;
+  flex-shrink: 0;
   gap: 0.3rem;
   margin-left: auto;
+}
+
+.app-header .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Narrow phones: the tabs matter more than the name, so the name gives way to the
+   logo and the tabs tighten. */
+@media (max-width: 26rem) {
+  .brand-name {
+    display: none;
+  }
+
+  .app-header nav {
+    flex: 1;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .app-header nav a {
+    padding: 0.5rem 0.7rem;
+  }
 }
 
 .app-header nav a {
@@ -1054,9 +1103,15 @@ button.danger,
   }
 }
 
-/* No touch-action override here on purpose. swipe.js only observes the gesture and
-   never calls preventDefault, so claiming horizontal panning would buy nothing and
-   risk breaking text selection inside the inputs. */
+/* The browser keeps vertical scrolling and leaves sideways drags to swipe.js. With
+   the default, a sideways drag the browser decided was its own pan ended in
+   touchcancel, so a swipe only worked from some spots. The player bar is left out,
+   because its scrubber needs the sideways drag. Text selection uses a long press,
+   which pan-y does not affect. */
+.app-header,
+main {
+  touch-action: pan-y;
+}
 
 /* The help dialog is taller than a confirmation, so it scrolls inside itself. */
 .dialog.help {
@@ -1149,4 +1204,106 @@ button.wide .icon-svg {
 
 .section > :last-child {
   margin-bottom: 0;
+}
+
+/* Save to phone: a quiet second row under the link field. The label doubles as the
+   progress readout while a save runs. */
+.save-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.save-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+button.save-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 38px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+/* A section heading with a leading glyph, such as "On this device". */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.device-card {
+  padding: 0.9rem 1rem;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.device-card p {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.device-card .hint {
+  margin: 0.7rem 0 0;
+}
+
+.folder-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: var(--accent-soft);
+  background: rgb(168 85 247 / 12%);
+}
+
+/* A song inside an opened folder, set in from the folder row above it. */
+.item.nested {
+  margin-left: 1.2rem;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.item.tappable {
+  cursor: pointer;
+}
+
+.chevron {
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.chevron.open {
+  transform: rotate(90deg);
+}
+
+/* Title over a path, for a page head whose name alone may be ambiguous. */
+.head-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.head-text .sub {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

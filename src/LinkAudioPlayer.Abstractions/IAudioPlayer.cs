@@ -34,7 +34,7 @@ public interface IAudioPlayer : IAsyncDisposable
     TimeSpan Duration { get; }
 
     /// <summary>Loads a local audio file and begins playing it.</summary>
-    /// <param name="filePath">Absolute path to the downloaded audio.</param>
+    /// <param name="filePath">Absolute path to downloaded audio, or a content URI for a phone song.</param>
     /// <param name="metadata">Details shown on the lock screen.</param>
     /// <param name="cancellationToken">Cancels the load.</param>
     Task LoadAsync(string filePath, NowPlaying metadata, CancellationToken cancellationToken);

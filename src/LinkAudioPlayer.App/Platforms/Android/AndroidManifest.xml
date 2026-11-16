@@ -28,6 +28,12 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+  <!-- Reads the music already on the phone, to show its folders as playlists. Read only:
+       saving a file goes through the system save dialog, which needs no permission.
+       Android 13 split storage by media type; older versions use the general permission. -->
+  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
   <!-- Android 13 and later require consent before the media notification appears. -->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

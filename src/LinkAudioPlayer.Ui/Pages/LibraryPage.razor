@@ -7,6 +7,7 @@
 @inject ToastService Toasts
 @inject ConfirmService Confirm
 @inject ClipboardService Clipboard
+@inject AudioSaveTracker Saver
 @inject IJSRuntime Js
 
 <h1 class="visually-hidden">Library</h1>
@@ -18,8 +19,25 @@
            @bind="_url"
            @bind:event="oninput"
            @onkeydown="OnKeyDown" />
+    <button class="btn round" title="Paste" aria-label="Paste from clipboard" @onclick="PasteAsync">
+        <Icon Name="paste" Size="20" />
+    </button>
     <button class="primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_url))" @onclick="AddAsync">
         @(_busy ? "Adding" : "Add")
+    </button>
+</div>
+
+@* Saving is separate from adding: it writes a file to the phone and leaves the
+   library alone. *@
+<div class="save-row">
+    <span class="save-label">@(Saver.Status ?? "Save audio to phone")</span>
+    <button class="save-button" disabled="@(Saver.IsBusy || string.IsNullOrWhiteSpace(_url))"
+            title="Save as M4A" @onclick="() => SaveAsync(AudioFormat.M4a)">
+        M4A <Icon Name="download" Size="16" />
+    </button>
+    <button class="save-button" disabled="@(Saver.IsBusy || string.IsNullOrWhiteSpace(_url))"
+            title="Save as MP3" @onclick="() => SaveAsync(AudioFormat.Mp3)">
+        MP3 <Icon Name="download" Size="16" />
     </button>
 </div>
 
@@ -132,8 +150,25 @@ else
     protected override async Task OnInitializedAsync()
     {
         Player.StateChanged += OnPlayerChanged;
+        Saver.Changed += OnPlayerChanged;
         await RefreshAsync();
     }
+
+    /// <summary>Replaces the field with the clipboard, saving the long press.</summary>
+    private async Task PasteAsync()
+    {
+        var text = await Clipboard.PasteAsync();
+        if (text is null)
+        {
+            Toasts.Show("Nothing to paste");
+            return;
+        }
+
+        _url = text;
+    }
+
+    /// <summary>Saves the link's audio as a file. The link stays in the field, so both formats can be saved.</summary>
+    private async Task SaveAsync(AudioFormat format) => await Saver.SaveAsync(_url, format);
 
     /// <summary>Matches a track on title, artist or provider.</summary>
     private static bool Matches(LibraryTrack entry, string term) =>
@@ -300,6 +335,7 @@ else
     public async ValueTask DisposeAsync()
     {
         Player.StateChanged -= OnPlayerChanged;
+        Saver.Changed -= OnPlayerChanged;
 
         if (_reorder is not null)
         {

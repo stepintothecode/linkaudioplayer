@@ -10,6 +10,7 @@
 @inject ConfirmService Confirm
 @inject ToastService Toasts
 @inject TabMemory Memory
+@inject IDeviceFolderStore Folders
 
 @if (_playlist is null)
 {
@@ -49,7 +50,7 @@ else
                     <img class="art" src="@Artwork(item.Track)" alt="" loading="lazy" />
                     <div class="meta tappable" @onclick="() => ToggleLink(item.TrackId)">
                         <span class="title">@item.Track?.Title</span>
-                        <span class="sub">@(item.Track?.Artist ?? item.Track?.Provider)</span>
+                        <span class="sub">@Subtitle(item.Track)</span>
                     </div>
                     <button class="icon" title="Play" aria-label="Play"
                             @onclick="() => PlayFromAsync(index)" @onclick:stopPropagation>
@@ -60,7 +61,8 @@ else
                         <Icon Name="close" Size="18" />
                     </button>
 
-                    @if (_showLinkFor == item.TrackId && item.Track is { } linked)
+                    @* A phone song's address is a content URI, which is no use to copy. *@
+                    @if (_showLinkFor == item.TrackId && item.Track is { IsOnDevice: false } linked)
                     {
                         <div class="link-row">
                             <span class="link-url">@linked.SourceUrl</span>
@@ -99,6 +101,43 @@ else
             }
         </ul>
     }
+
+    @* One folder open at a time, and only its songs are drawn, so a phone with
+       thousands of songs costs nothing until a folder is opened. *@
+    @if (_phoneGroups.Count > 0)
+    {
+        <h2 class="section-head"><Icon Name="phone" Size="15" /> Add from this phone</h2>
+        <ul class="list">
+            @foreach (var group in _phoneGroups)
+            {
+                var open = _openFolder == group.Path;
+                <li class="item tappable" @key="group.Path" @onclick="() => ToggleFolder(group.Path)">
+                    <span class="folder-glyph"><Icon Name="folder" Size="20" /></span>
+                    <div class="meta">
+                        <span class="title">@group.Name</span>
+                        <span class="sub">@(group.Songs.Count == 1 ? "1 song" : $"{group.Songs.Count} songs") to add@(group.ShowPath ? $" · {group.Path}" : "")</span>
+                    </div>
+                    <Icon Name="chevron" Size="18" Class="@(open ? "chevron open" : "chevron")" />
+                </li>
+
+                @if (open)
+                {
+                    @foreach (var song in group.Songs)
+                    {
+                        <li class="item nested" @key="song.Id">
+                            <div class="meta">
+                                <span class="title">@song.Title</span>
+                                <span class="sub">@Subtitle(song)</span>
+                            </div>
+                            <button class="icon" title="Add" aria-label="Add" @onclick="() => AddAsync(song.Id)">
+                                <Icon Name="plus" Size="18" />
+                            </button>
+                        </li>
+                    }
+                }
+            }
+        </ul>
+    }
 }
 
 @code {
@@ -109,6 +148,8 @@ else
     private Playlist? _playlist;
     private List<PlaylistItem> _items = [];
     private List<LibraryTrack> _available = [];
+    private List<PhoneGroup> _phoneGroups = [];
+    private string? _openFolder;
     private ElementReference _listElement;
     private Guid? _showLinkFor;
     private DotNetObjectReference<PlaylistDetailPage>? _self;
@@ -271,7 +312,51 @@ else
         var present = _items.Select(i => i.TrackId).ToHashSet();
         var library = await LibraryService.ListAsync(CancellationToken.None);
         _available = [.. library.Where(t => !present.Contains(t.Track.Id))];
+        _phoneGroups = await LoadPhoneGroupsAsync(present);
     });
+
+    /// <summary>Phone songs not yet in this playlist, grouped by folder in the user's folder order.</summary>
+    private async Task<List<PhoneGroup>> LoadPhoneGroupsAsync(HashSet<Guid> present)
+    {
+        var folders = await Folders.ListAsync(CancellationToken.None);
+        if (folders.Count == 0)
+        {
+            return [];
+        }
+
+        var songs = (await Folders.ListAllSongsAsync(CancellationToken.None))
+            .Where(s => !present.Contains(s.Id))
+            .GroupBy(s => s.FolderPath!)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var shared = folders
+            .GroupBy(f => f.Folder.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .SelectMany(g => g)
+            .Select(f => f.Folder.Path)
+            .ToHashSet();
+
+        return
+        [
+            .. folders
+                .Where(f => songs.ContainsKey(f.Folder.Path))
+                .Select(f => new PhoneGroup(
+                    f.Folder.Path,
+                    f.Folder.Name,
+                    shared.Contains(f.Folder.Path),
+                    songs[f.Folder.Path])),
+        ];
+    }
+
+    /// <summary>Opens a phone folder, closing any other.</summary>
+    private void ToggleFolder(string path) => _openFolder = _openFolder == path ? null : path;
+
+    /// <summary>Artist when known, otherwise where the track came from.</summary>
+    private static string? Subtitle(Track? track) =>
+        track?.Artist ?? (track?.IsOnDevice == true ? "On this phone" : track?.Provider);
+
+    /// <summary>A phone folder's songs that can still be added.</summary>
+    private sealed record PhoneGroup(string Path, string Name, bool ShowPath, List<Track> Songs);
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()

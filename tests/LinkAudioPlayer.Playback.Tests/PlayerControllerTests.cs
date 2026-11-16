@@ -58,6 +58,24 @@ public sealed class PlayerControllerTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Plays_a_phone_song_from_its_own_file_without_downloading()
+    {
+        var song = new Track
+        {
+            SourceUrl = "content://media/external/audio/media/7",
+            Provider = Track.DeviceProvider,
+            Title = "Yellow",
+            CacheKey = "phone",
+            FolderPath = "Music/Coldplay",
+        };
+
+        await _controller.PlayQueueAsync([song], "Coldplay on this phone");
+
+        Assert.Empty(_cache.Downloaded);
+        Assert.Equal([song.SourceUrl], _player.LoadedPaths);
+    }
+
+    [Fact]
     public async Task Advances_when_a_track_finishes()
     {
         await _controller.PlayQueueAsync(Tracks("a", "b"), "Test queue");

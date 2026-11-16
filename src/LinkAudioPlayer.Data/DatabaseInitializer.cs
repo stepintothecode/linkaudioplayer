@@ -80,6 +80,39 @@ public static class DatabaseInitializer
                 """,
                 cancellationToken);
         }
+
+        if (!await ColumnExistsAsync(db, "Tracks", "FolderPath", cancellationToken))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                ALTER TABLE "Tracks" ADD COLUMN "FolderPath" TEXT NULL;
+                """,
+                cancellationToken);
+
+            await db.Database.ExecuteSqlRawAsync(
+                """
+                CREATE INDEX IF NOT EXISTS "IX_Tracks_FolderPath_Position" ON "Tracks" ("FolderPath", "Position");
+                """,
+                cancellationToken);
+        }
+
+        // Matches what EnsureCreated builds for a new install.
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "DeviceFolders" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_DeviceFolders" PRIMARY KEY,
+                "Path" TEXT NOT NULL,
+                "Name" TEXT NOT NULL,
+                "Position" INTEGER NOT NULL
+            );
+            """,
+            cancellationToken);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_DeviceFolders_Path" ON "DeviceFolders" ("Path");
+            """,
+            cancellationToken);
     }
 
     /// <summary>True when the table already has the column.</summary>

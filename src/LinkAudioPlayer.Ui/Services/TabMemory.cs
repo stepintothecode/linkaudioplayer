@@ -13,6 +13,9 @@ public sealed class TabMemory
     /// <summary>Records that a playlist is open.</summary>
     public void OpenedPlaylist(Guid playlistId) => PlaylistRoute = $"playlists/{playlistId}";
 
+    /// <summary>Records that a phone folder is open. It sits on the playlists tab too.</summary>
+    public void OpenedDeviceFolder(Guid folderId) => PlaylistRoute = $"playlists/device/{folderId}";
+
     /// <summary>
     /// Forgets the open playlist.
     /// Called when the list itself is shown, so backing out then returning gives the

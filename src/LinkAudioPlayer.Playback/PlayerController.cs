@@ -333,7 +333,8 @@ public sealed class PlayerController : IAsyncDisposable
 
         try
         {
-            var path = _cache.TryGetPath(track.CacheKey);
+            // A phone song plays from its own file and is never copied into the cache.
+            var path = track.IsOnDevice ? track.SourceUrl : _cache.TryGetPath(track.CacheKey);
             _logger.LogInformation(
                 "Loading '{Title}', cached: {Cached}", track.Title, path is not null);
 

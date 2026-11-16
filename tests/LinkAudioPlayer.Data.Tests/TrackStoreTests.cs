@@ -126,6 +126,32 @@ public sealed class TrackStoreTests : IAsyncLifetime
         Assert.False(await store.ReorderAsync(partial, TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task Phone_songs_stay_out_of_the_library_and_cannot_be_deleted()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await AddAsync("linked", DateTimeOffset.UtcNow);
+
+        var folders = new DeviceFolderStore(_database);
+        await folders.SyncAsync([new("content://media/1", "phone song", null, null, "Music")], ct);
+        var phoneSong = Assert.Single(await folders.ListAllSongsAsync(ct));
+
+        Assert.Equal(["linked"], (await _store.ListAsync(ct)).Select(t => t.Title));
+        Assert.False(await _store.DeleteAsync(phoneSong.Id, ct));
+    }
+
+    [Fact]
+    public async Task Adding_a_link_leaves_the_order_inside_phone_folders_alone()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folders = new DeviceFolderStore(_database);
+        await folders.SyncAsync([new("content://media/1", "a", null, null, "Music"), new("content://media/2", "b", null, null, "Music")], ct);
+
+        await AddAsync("linked", DateTimeOffset.UtcNow);
+
+        Assert.Equal([0, 1], (await folders.ListAllSongsAsync(ct)).Select(t => t.Position));
+    }
+
     private async Task<Guid> AddAsync(string title, DateTimeOffset addedAt)
     {
         var track = await _store.AddAsync(

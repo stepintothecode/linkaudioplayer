@@ -1,8 +1,10 @@
 @* Root router. Referenced by the MAUI host's index page. *@
 <Router AppAssembly="@typeof(Routes).Assembly">
     <Found Context="routeData">
+        @* No FocusOnNavigate. Focusing a heading after every change drew the web view's
+           focus ring round it, and focus() scrolls the element into view, which threw
+           away the scroll position each page restores when you come back to it. *@
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
         <LayoutView Layout="@typeof(MainLayout)">

@@ -21,8 +21,10 @@ public sealed class TrackStore : ITrackStore
     {
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
 
+        // Phone songs live in their folders, not in the library.
         return await db.Tracks
             .AsNoTracking()
+            .Where(t => t.FolderPath == null)
             .OrderBy(t => t.Position)
             .ThenByDescending(t => t.AddedAt)
             .ToListAsync(cancellationToken);
@@ -56,9 +58,12 @@ public sealed class TrackStore : ITrackStore
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
 
         // One statement, so adding stays cheap however large the library grows.
-        await db.Tracks.ExecuteUpdateAsync(
-            setters => setters.SetProperty(t => t.Position, t => t.Position + 1),
-            cancellationToken);
+        // Phone songs keep their own per folder order.
+        await db.Tracks
+            .Where(t => t.FolderPath == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(t => t.Position, t => t.Position + 1),
+                cancellationToken);
 
         track.Position = 0;
         db.Tracks.Add(track);
@@ -74,7 +79,7 @@ public sealed class TrackStore : ITrackStore
         ArgumentNullException.ThrowIfNull(trackIdsInOrder);
 
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
-        var tracks = await db.Tracks.ToListAsync(cancellationToken);
+        var tracks = await db.Tracks.Where(t => t.FolderPath == null).ToListAsync(cancellationToken);
 
         // Ignore the request unless it names exactly the tracks the library holds.
         var known = tracks.Select(t => t.Id).ToHashSet();
@@ -97,8 +102,9 @@ public sealed class TrackStore : ITrackStore
     {
         await using var db = await _factory.CreateDbContextAsync(cancellationToken);
 
+        // A phone song only leaves when its file does, through a rescan.
         var track = await db.Tracks.FindAsync([trackId], cancellationToken);
-        if (track is null)
+        if (track is null || track.FolderPath is not null)
         {
             return false;
         }

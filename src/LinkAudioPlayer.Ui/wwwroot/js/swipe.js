@@ -17,7 +17,7 @@
 const MIN_DISTANCE = 48; // px for a deliberate drag
 const FLICK_DISTANCE = 22; // px, when it is fast enough to be a flick
 const FLICK_SPEED = 0.35; // px per ms
-const MAX_DURATION = 900; // ms, beyond which it is a drag and not a swipe
+const MAX_FLICK_DURATION = 900; // ms, a flick has to be quick; a long drag may take its time
 const HORIZONTAL_BIAS = 1.15; // how much more horizontal than vertical it must be
 const DECIDE_AFTER = 8; // px before the direction is judged
 const FOLLOW = 0.32; // how far the page moves with the finger
@@ -42,11 +42,13 @@ export function attach(element, dotNetRef, methodName, tabPosition) {
   dotNet = { ref: dotNetRef, method: methodName };
   tabAt = tabPosition;
 
+  // On the document rather than the element, so the whole screen takes the gesture:
+  // the header, and the empty space below a short page, which main does not cover.
   // Passive, so the browser never waits on this handler before scrolling.
-  element.addEventListener("touchstart", onStart, { passive: true });
-  element.addEventListener("touchmove", onMove, { passive: true });
-  element.addEventListener("touchend", onEnd, { passive: true });
-  element.addEventListener("touchcancel", onCancel, { passive: true });
+  document.addEventListener("touchstart", onStart, { passive: true });
+  document.addEventListener("touchmove", onMove, { passive: true });
+  document.addEventListener("touchend", onEnd, { passive: true });
+  document.addEventListener("touchcancel", onCancel, { passive: true });
 }
 
 /// Stops listening and clears any gesture in progress.
@@ -57,10 +59,10 @@ export function detach(element) {
   }
 
   delete el.dataset.swipeBound;
-  el.removeEventListener("touchstart", onStart);
-  el.removeEventListener("touchmove", onMove);
-  el.removeEventListener("touchend", onEnd);
-  el.removeEventListener("touchcancel", onCancel);
+  document.removeEventListener("touchstart", onStart);
+  document.removeEventListener("touchmove", onMove);
+  document.removeEventListener("touchend", onEnd);
+  document.removeEventListener("touchcancel", onCancel);
 
   release(true);
   target = null;
@@ -138,13 +140,12 @@ function onEnd(event) {
   const speed = Math.abs(dx) / elapsed;
 
   const far = Math.abs(dx) >= MIN_DISTANCE;
-  const flicked = speed >= FLICK_SPEED && Math.abs(dx) >= FLICK_DISTANCE;
-  const inTime = elapsed <= MAX_DURATION;
+  const flicked = speed >= FLICK_SPEED && Math.abs(dx) >= FLICK_DISTANCE && elapsed <= MAX_FLICK_DURATION;
 
   // Dragging left moves forward through the tabs, the way pages do.
   const direction = dx < 0 ? 1 : -1;
 
-  if ((far || flicked) && inTime && canMove(direction) && dotNet) {
+  if ((far || flicked) && canMove(direction) && dotNet) {
     // The transform is left in place: the outgoing page keeps its offset until
     // the new one replaces it, which is what makes the change read as one motion.
     release(false);

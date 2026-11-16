@@ -90,7 +90,9 @@ public sealed class AndroidAudioPlayer : Java.Lang.Object, IAudioPlayer
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(metadata);
 
-        if (!File.Exists(filePath))
+        var isContent = IsContentUri(filePath);
+
+        if (!isContent && !File.Exists(filePath))
         {
             throw new FileNotFoundException("The downloaded audio file is missing.", filePath);
         }
@@ -113,7 +115,16 @@ public sealed class AndroidAudioPlayer : Java.Lang.Object, IAudioPlayer
             player.Error += OnError;
             _player = player;
 
-            player.SetDataSource(filePath);
+            // A phone song is a content URI, which the string overload cannot open.
+            if (isContent)
+            {
+                player.SetDataSource(Application.Context, global::Android.Net.Uri.Parse(filePath)!);
+            }
+            else
+            {
+                player.SetDataSource(filePath);
+            }
+
             await PrepareAsync(player, cancellationToken);
 
             Duration = player.Duration > 0 ? TimeSpan.FromMilliseconds(player.Duration) : TimeSpan.Zero;
@@ -127,7 +138,43 @@ public sealed class AndroidAudioPlayer : Java.Lang.Object, IAudioPlayer
         });
 
         // Also off the main thread. It is reached from a continuation that resumes there.
-        _ = Task.Run(() => LoadArtworkAsync(metadata));
+        _ = Task.Run(() => isContent ? LoadEmbeddedArtworkAsync(filePath, metadata) : LoadArtworkAsync(metadata));
+    }
+
+    private static bool IsContentUri(string path) =>
+        path.StartsWith("content://", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A phone song has no artwork URL, but its file often carries a cover picture.</summary>
+    private async Task LoadEmbeddedArtworkAsync(string uri, NowPlaying metadata)
+    {
+        try
+        {
+            using var retriever = new MediaMetadataRetriever();
+            retriever.SetDataSource(Application.Context, global::Android.Net.Uri.Parse(uri)!);
+
+            var picture = retriever.GetEmbeddedPicture();
+            if (picture is null || picture.Length == 0)
+            {
+                return;
+            }
+
+            var bitmap = await BitmapFactory.DecodeByteArrayAsync(picture, 0, picture.Length);
+            if (bitmap is null || !ReferenceEquals(_nowPlaying, metadata))
+            {
+                return;
+            }
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                PublishMetadata(metadata, bitmap);
+                PlaybackService.Refresh();
+            });
+        }
+        catch (Exception ex)
+        {
+            // Artwork is decorative. Playback continues without it.
+            _logger.LogDebug(ex, "Could not read embedded artwork from {Uri}", uri);
+        }
     }
 
     /// <inheritdoc />

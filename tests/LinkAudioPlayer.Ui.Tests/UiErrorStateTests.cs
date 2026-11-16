@@ -42,13 +42,39 @@ public sealed class UiErrorStateTests
     }
 
     [Fact]
-    public async Task A_later_success_clears_an_earlier_failure()
+    public async Task A_retry_that_succeeds_clears_its_own_failure()
     {
-        await _errors.TryAsync("First", () => throw new InvalidOperationException("boom"));
+        await _errors.TryAsync("Adding the link", () => throw new InvalidOperationException("boom"));
         Assert.NotNull(_errors.Message);
 
-        await _errors.TryAsync("Second", () => Task.CompletedTask);
+        await _errors.TryAsync("Adding the link", () => Task.CompletedTask);
         Assert.Null(_errors.Message);
+    }
+
+    // Used to clear it: any success did, and pages reload or rebind on every render, so
+    // a failed add or save vanished from the banner before it could be read.
+    [Fact]
+    public async Task Other_work_succeeding_leaves_a_failure_visible()
+    {
+        await _errors.TryAsync("Saving the MP3", () => throw new InvalidOperationException("boom"));
+
+        await _errors.TryAsync("Loading the library", () => Task.CompletedTask);
+        await _errors.TryAsync("Enabling drag to reorder", () => Task.CompletedTask);
+
+        Assert.Contains("boom", _errors.Message!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_new_failure_replaces_the_old_one()
+    {
+        await _errors.TryAsync("First", () => throw new InvalidOperationException("one"));
+        await _errors.TryAsync("Second", () => throw new InvalidOperationException("two"));
+
+        Assert.Contains("two", _errors.Message!, StringComparison.Ordinal);
+
+        // The first action succeeding now must not clear the second's message.
+        await _errors.TryAsync("First", () => Task.CompletedTask);
+        Assert.NotNull(_errors.Message);
     }
 
     [Fact]

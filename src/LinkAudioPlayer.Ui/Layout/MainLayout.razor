@@ -3,12 +3,19 @@
 @inject UiErrorState Errors
 @inject NavigationManager Nav
 @inject TabMemory Memory
+@inject ToastService Toasts
+@inject ConfirmService Confirm
+@inject BackButton Back
+@inject IAppExit AppExit
 @inject IJSRuntime Js
 
 @* The boundary matters: without it one thrown exception tears down the renderer and
    every button in the app stops responding until it is force closed. *@
 <header class="app-header">
-    <h1>LinkAudioPlayer</h1>
+    <div class="brand">
+        <img class="brand-mark" src="_content/LinkAudioPlayer.Ui/icon.png" alt="" />
+        <span class="brand-name">LinkAudioPlayer</span>
+    </div>
     <nav>
         <NavLink href="" Match="NavLinkMatch.All" ActiveClass="active">Library</NavLink>
         <a href="@Memory.Resolve("playlists")"
@@ -46,7 +53,11 @@
     private ElementReference _main;
     private DotNetObjectReference<MainLayout>? _self;
     private IJSObjectReference? _swipe;
+    private IJSObjectReference? _scroll;
+    private readonly BackNavigation _back = new();
+    private Func<Task>? _onBack;
     private string _path = string.Empty;
+    private string? _reportedPath;
     private string _slide = string.Empty;
     private int _sentIndex = int.MinValue;
 
@@ -54,18 +65,97 @@
     protected override void OnInitialized()
     {
         _path = CurrentPath();
+        _back.Visited(_path);
         Nav.LocationChanged += OnLocationChanged;
+
+        _onBack = OnBackAsync;
+        Back.Attach(_onBack);
     }
 
     /// <summary>Resets the boundary on navigation so a past failure does not stick.</summary>
     protected override void OnParametersSet() => _boundary?.Recover();
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await UpdateSwipeAsync(firstRender);
+        await ReportRenderedAsync(firstRender);
+    }
+
+    /// <summary>
+    /// Tells scroll-memory.js the page for a new route is on screen, so it can put back
+    /// the position you left it at. It waits for lists that load after this render.
+    /// </summary>
+    private async Task ReportRenderedAsync(bool firstRender)
+    {
+        if (!firstRender && _reportedPath == _path)
+        {
+            return;
+        }
+
+        _reportedPath = _path;
+
+        try
+        {
+            if (_scroll is null)
+            {
+                _scroll = await Js.InvokeAsync<IJSObjectReference>(
+                    "import", "./_content/LinkAudioPlayer.Ui/js/scroll-memory.js");
+                await _scroll.InvokeVoidAsync("attach");
+            }
+
+            await _scroll.InvokeVoidAsync("rendered", _path);
+        }
+        catch (JSException)
+        {
+            // Losing the position is a nuisance, not a failure. The page still works.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The web view is already gone.
+        }
+    }
+
+    /// <summary>
+    /// The system back button. On a tab it asks for a second press before leaving; on
+    /// any other page it returns to the page you came from. An open dialog closes first.
+    /// </summary>
+    private Task OnBackAsync() => InvokeAsync(() =>
+    {
+        try
+        {
+            if (Confirm.Request is not null)
+            {
+                Confirm.Answer(false);
+                return;
+            }
+
+            var action = _back.Press(CurrentPath());
+            switch (action.Kind)
+            {
+                case BackKind.ShowExitHint:
+                    Toasts.Show("Press back again to exit");
+                    break;
+                case BackKind.Exit:
+                    AppExit.Leave();
+                    break;
+                default:
+                    Nav.NavigateTo(action.Route ?? string.Empty);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Errors.Report("Going back", ex);
+        }
+    });
 
     /// <summary>
     /// Binds the swipe handler, and keeps it told which tab is showing.
     /// The position is what lets a swipe at either end resist instead of sliding
     /// towards a tab that is not there.
     /// </summary>
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task UpdateSwipeAsync(bool firstRender)
     {
         var index = TabNavigation.IndexOf(_path);
         if (!firstRender && index == _sentIndex)
@@ -133,6 +223,11 @@
 
         _slide = TabNavigation.SlideClass(_path, next);
         _path = next;
+        _back.Visited(next);
+
+        // An error belongs to the screen it happened on. Retries no longer clear it
+        // implicitly, so leaving the screen does.
+        Errors.Clear();
         InvokeAsync(StateHasChanged);
     }
 
@@ -143,6 +238,23 @@
     public async ValueTask DisposeAsync()
     {
         Nav.LocationChanged -= OnLocationChanged;
+
+        if (_onBack is not null)
+        {
+            Back.Detach(_onBack);
+        }
+
+        if (_scroll is not null)
+        {
+            try
+            {
+                await _scroll.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The web view is already gone.
+            }
+        }
 
         if (_swipe is not null)
         {
