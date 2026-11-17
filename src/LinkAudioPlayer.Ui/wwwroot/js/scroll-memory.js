@@ -54,6 +54,8 @@ export function attach() {
 
 /// Called by the layout once the page for a route has rendered.
 export function rendered(path) {
+  dropStaleFocus();
+
   if (!pending || pending.path !== normalise(path)) {
     return;
   }
@@ -82,6 +84,16 @@ export function rendered(path) {
   };
 
   requestAnimationFrame(step);
+}
+
+/// A tapped tab keeps focus after the page changes by other means, such as a share or
+/// the back button. A key press then switches the web view to keyboard mode and it drew
+/// a yellow ring round that tab. Text fields keep focus, so typing is never interrupted.
+function dropStaleFocus() {
+  const active = document.activeElement;
+  if (active && active !== document.body && !active.matches("input, textarea, select")) {
+    active.blur();
+  }
 }
 
 function expect() {

@@ -49,6 +49,15 @@ main {
   overflow-x: clip;
 }
 
+/* No keyboard focus ring on tap targets. The 3-button back key counts as a key press,
+   which puts the web view in keyboard mode, and it then drew a yellow rectangle round
+   whichever tab was last tapped. The app is only ever used by touch. Text fields keep
+   their own focus style. */
+a:focus-visible,
+button:focus-visible {
+  outline: none;
+}
+
 /* Safety net for the header, which sits outside main. clip, for the same reason. */
 #app {
   overflow-x: clip;
