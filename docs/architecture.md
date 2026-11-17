@@ -214,6 +214,22 @@ set `touch-action: pan-y`, so the browser keeps vertical scrolling and no longer
 a sideways drag it took for its own pan. A long drag counts however slowly it is made;
 only a short flick has to be quick.
 
+**Shares and opened files arrive through their own activities.** `ShareActivity`
+takes `text/plain` shares, such as YouTube's Share menu, and `OpenAudioActivity` takes
+"Open with" and shares of audio files. Each shows nothing: it hands the link or file to
+a singleton inbox and opens `MainActivity`. They are separate because a share launches
+into the sender's task, and receiving it in `MainActivity` would start a second copy of
+the app inside YouTube. Their `TaskAffinity` is empty, so neither becomes the root of
+the app's own task: when the share receiver was, a later share launched as a new task
+only brought that task forward and never arrived. `OpenAudioActivity` passes its read
+grant on to `MainActivity`, or the sender's permission would lapse when it finished.
+
+**A page is built once per navigation.** The page wrapper is keyed on the live address.
+It was keyed on `_path`, which `OnLocationChanged` updates after the router has already
+drawn the new page, so every page was built, thrown away and built again. Besides the
+wasted loads, the first copy took a shared link out of its inbox and the second found
+it empty.
+
 **Only a retry clears an error.** `UiErrorState.TryAsync` used to clear the banner
 whenever any work succeeded, and pages reload lists and rebind the reorder handle on
 every render, so a failed add or save vanished before it could be read. A success now

@@ -77,6 +77,8 @@ public static class MauiProgram
         builder.Services.AddScoped<ClipboardService>();
         builder.Services.AddScoped<AudioSaveTracker>();
         builder.Services.AddSingleton<BackButton>();
+        builder.Services.AddSingleton<SharedLinkInbox>();
+        builder.Services.AddSingleton<OpenedAudioInbox>();
         builder.Services.AddSingleton<IAppExit, AndroidAppExit>();
 
         builder.Logging.AddProvider(new InMemoryLoggerProvider(store));

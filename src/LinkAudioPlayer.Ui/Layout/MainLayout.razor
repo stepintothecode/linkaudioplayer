@@ -7,6 +7,9 @@
 @inject ConfirmService Confirm
 @inject BackButton Back
 @inject IAppExit AppExit
+@inject SharedLinkInbox Shared
+@inject OpenedAudioInbox Opened
+@inject PlayerController Player
 @inject IJSRuntime Js
 
 @* The boundary matters: without it one thrown exception tears down the renderer and
@@ -28,8 +31,11 @@
     <ErrorBanner />
 
     @* Keyed on the path so the entry animation replays on every change, and classed
-       by direction so it slides in from the side you came from. *@
-    <div class="page @_slide" @key="_path">
+       by direction so it slides in from the side you came from. The key reads the live
+       address, not _path: the router draws the new page before OnLocationChanged
+       updates _path, so keying on the field built every page twice, and the first copy
+       swallowed anything it took once, such as a link shared from YouTube. *@
+    <div class="page @_slide" @key="CurrentPath()">
         <ErrorBoundary @ref="_boundary">
             <ChildContent>
                 @Body
@@ -70,7 +76,51 @@
 
         _onBack = OnBackAsync;
         Back.Attach(_onBack);
+
+        Shared.Arrived += OnLinkShared;
+        Opened.Arrived += OnFileOpened;
+
+        // Opening a file can be what started the app, before this subscribed.
+        OnFileOpened();
     }
+
+    /// <summary>Plays an audio file opened from another app, such as "Open with" in a file manager.</summary>
+    private void OnFileOpened() => InvokeAsync(async () =>
+    {
+        if (Opened.Take() is not { } file)
+        {
+            return;
+        }
+
+        // A one song queue that is never stored. FolderPath marks it as a file on the
+        // phone, which the player opens directly instead of looking for a download.
+        var track = new Track
+        {
+            SourceUrl = file.Uri,
+            Provider = Track.DeviceProvider,
+            Title = file.Title,
+            CacheKey = CacheKeyFactory.FromSourceUrl(file.Uri),
+            FolderPath = string.Empty,
+        };
+
+        var ok = await Errors.TryAsync("Playing the file", () => Player.PlayQueueAsync([track], "Opened file"));
+        if (ok)
+        {
+            Toasts.Show($"Playing {file.Title}", "play");
+        }
+    });
+
+    /// <summary>
+    /// A link shared from another app opens the library, where its field takes the link.
+    /// The library page picks it up itself when it is already showing.
+    /// </summary>
+    private void OnLinkShared() => InvokeAsync(() =>
+    {
+        if (CurrentPath().Length != 0)
+        {
+            Nav.NavigateTo(string.Empty);
+        }
+    });
 
     /// <summary>Resets the boundary on navigation so a past failure does not stick.</summary>
     protected override void OnParametersSet() => _boundary?.Recover();
@@ -238,6 +288,8 @@
     public async ValueTask DisposeAsync()
     {
         Nav.LocationChanged -= OnLocationChanged;
+        Shared.Arrived -= OnLinkShared;
+        Opened.Arrived -= OnFileOpened;
 
         if (_onBack is not null)
         {

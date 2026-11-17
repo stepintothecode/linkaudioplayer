@@ -28,6 +28,15 @@ DRM protected services like Spotify and Apple Music are refused by design. See
 [docs/legal-boundaries.md](docs/legal-boundaries.md) for why, and read it before
 contributing.
 
+## Sharing into the app
+
+In YouTube, tap **Share** and pick **LinkAudioPlayer**. The app opens on the library
+with the link filled in, ready to add or to save as M4A or MP3. Any app that shares a
+link works the same way.
+
+An audio file can be opened with LinkAudioPlayer from a file manager's **Open with**
+or **Share** menu. It plays straight away and is not added to the library.
+
 ## Music on the phone
 
 The **Playlists** tab also lists the music already on the phone under **On this
